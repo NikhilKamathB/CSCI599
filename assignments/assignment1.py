@@ -11,7 +11,7 @@ sys.path.append('..')
 
 # Import the required modules
 import src
-# import trimesh
+import trimesh
 
 
 def subdivision_loop(mesh, iterations=1):
@@ -65,6 +65,7 @@ if __name__ == '__main__':
     # Load mesh
     try:
         mesh = src.load_3d_file(OBJ_FILE)
+        print(mesh)
     except Exception as e:
         # # To get the stack trace, use the following line instead:
         # raise e
