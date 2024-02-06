@@ -21,6 +21,7 @@ def subdivision_loop(mesh, iterations=1):
     :param iterations: number of iterations
     :return: mesh after subdivision
     """
+    new_vertices, new_faces = mesh.loop_subdivision(iterations=iterations)
     return mesh
 
 
@@ -65,8 +66,8 @@ if __name__ == '__main__':
     # Load mesh
     try:
         mesh = src.load_3d_file(OBJ_FILE)
-        print(mesh)
+        mesh_subdivided = subdivision_loop(mesh, iterations=1000)
     except Exception as e:
         # # To get the stack trace, use the following line instead:
-        # raise e
-        print(f"An Error occurred: {e}")
+        raise e
+        # print(f"An Error occurred: {e}")

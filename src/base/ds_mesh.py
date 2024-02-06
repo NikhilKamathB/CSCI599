@@ -5,6 +5,7 @@
 import logging
 import numpy as np
 from typing import DefaultDict, Tuple
+from src.remesh import Remesh
 
 logger = logging.getLogger(__name__)
 
@@ -15,13 +16,14 @@ class NpMesh:
         Class to represent a mesh using numpy arrays.
     """
 
+    __LOG_PREFIX__ = "NpMesh()"
+
     def __init__(self, mesh: DefaultDict[str, list]) -> None:
         """
             Initialize the mesh object.
             Input parameters:
                 - mesh: dictionary of objects associated with the 3D file
         """
-        self.__LOG_PREFIX__ = "NpMesh()"
         if mesh is None or not mesh:
             logger.error(f"{self.__LOG_PREFIX__}: Invalid mesh object")
             raise ValueError("Invalid mesh object")
@@ -99,7 +101,7 @@ class NpMesh:
                 - numpy array of face vertices
         """
         logger.info(f"{self.__LOG_PREFIX__}: Getting the face vertices from the mesh")
-        return self.faces[:, :, 0]
+        return self.faces_combo[:, :, 0].astype(int)
     
     def _get_face_texture_coordinates(self) -> np.ndarray:
         """
@@ -108,7 +110,7 @@ class NpMesh:
                 - numpy array of face texture coordinates
         """
         logger.info(f"{self.__LOG_PREFIX__}: Getting the face texture coordinates from the mesh")
-        return self.faces[:, :, 1]
+        return self.faces_combo[:, :, 1].astype(int)
     
     def _get_face_vertex_normals(self) -> np.ndarray:
         """
@@ -117,19 +119,9 @@ class NpMesh:
                 - numpy array of face vertex normals
         """
         logger.info(f"{self.__LOG_PREFIX__}: Getting the face vertex normals from the mesh")
-        return self.faces[:, :, 2]
-    
-    def _build_mesh(self) -> None:
-        """
-            Build the mesh from the raw mesh data.
-        """
-        logger.info(f"{self.__LOG_PREFIX__}: Building the mesh from the raw mesh data")
-        self.vertices = self._get_vertices()
-        self.texture_coordinates = self._get_texture_coordinates()
-        self.vertex_normals = self._get_vertex_normals()
-        self.faces = self._get_faces()
-    
-    def _get_face_items(self) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
+        return self.faces_combo[:, :, 2].astype(int)
+
+    def _set_face_items(self) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
         """
             Get the face items from the mesh.
             Output:
@@ -137,7 +129,52 @@ class NpMesh:
         """
         logger.info(f"{self.__LOG_PREFIX__}: Getting the face items of the mesh")
         return self._get_face_vertices(), self._get_face_texture_coordinates(), self._get_face_vertex_normals()
-
+    
+    def _build_mesh(self) -> None:
+        """
+            Build the mesh from the raw mesh data.
+        """
+        try:
+            logger.info(f"{self.__LOG_PREFIX__}: Building the mesh from the raw mesh data")
+            self.vertices = self._get_vertices()
+            self.texture_coordinates = self._get_texture_coordinates()
+            self.vertex_normals = self._get_vertex_normals()
+            self.faces_combo = self._get_faces()
+            self.faces, self.faces_texture_coordinates, self.faces_texture_coordinates = self._set_face_items()
+            self.remesh = Remesh(self.vertices, self.faces)
+        except Exception as e:
+            logger.error(f"{self.__LOG_PREFIX__}: Error while building the mesh")
+            raise e
+    
+    def get_face_items(self) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
+        """
+            Get the face items from the mesh.
+            Output:
+                - tuple of numpy array of face items
+        """
+        try:
+            logger.info(f"{self.__LOG_PREFIX__}: Getting the face items of the mesh")
+            return self.faces, self.faces_texture_coordinates, self.faces_vertex_normals
+        except Exception as e:
+            logger.error(f"{self.__LOG_PREFIX__}: Error while getting the face items of the mesh")
+            raise e
+        
+    def loop_subdivision(self, iterations=1) -> Tuple[np.ndarray, np.ndarray]:
+        """
+            Apply Loop subdivision to the input mesh for the specified number of iterations.
+            Input parameters:
+                - iterations: number of iterations
+            Output:
+                - vertices and faces after subdivision
+        """
+        try:
+            logger.info(f"{self.__LOG_PREFIX__}: Applying Loop subdivision to the input mesh")
+            new_vertices, new_faces = self.remesh.loop_subdivision(iterations=iterations)
+            return new_vertices, new_faces
+        except Exception as e:
+            logger.error(f"{self.__LOG_PREFIX__}: Error while applying Loop subdivision to the input mesh")
+            raise e
+    
     @staticmethod
     def convert_to_numpy_matrix(data: list) -> np.ndarray:
         """
