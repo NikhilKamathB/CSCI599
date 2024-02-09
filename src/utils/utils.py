@@ -4,6 +4,7 @@
 
 import numpy as np
 from typing import Tuple
+import matplotlib.pyplot as plt
 
 
 def intify(item: list) -> list:
@@ -33,8 +34,8 @@ def get_special_edges(unique_edges: np.ndarray, unique_inverse: np.ndarray) -> T
         - unique_edges: numpy ndarray of unique edges (p x 2)
         - unique_inverse: numpy ndarray of unique inverse (m,)
     Output:
-        - interior_edges: numpy ndarray of interior edges
-        - boundary_edges: numpy ndarray of boundary edges
+        - interior_edges: numpy ndarray of interior edges (x, 2)
+        - boundary_edges: numpy ndarray of boundary edges (y, 2)
     """
     interior_edges = unique_edges[np.bincount(unique_inverse) == 2]
     boundary_edges = unique_edges[np.bincount(unique_inverse) == 1]

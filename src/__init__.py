@@ -9,7 +9,7 @@ from .utils.logger import __setup_logger__
 from .utils.load import load_3d_file
 
 __LOGGING_DIR__ = "../logs"
-__LOGGING_LEVEL__ = logging.DEBUG
+__LOGGING_LEVEL__ = logging.INFO
 
 if not os.path.exists(__LOGGING_DIR__):
     os.makedirs(__LOGGING_DIR__)
