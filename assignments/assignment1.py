@@ -22,7 +22,7 @@ def subdivision_loop(mesh, iterations=1):
     :return: mesh after subdivision
     """
     new_vertices, new_faces = mesh.loop_subdivision(iterations=iterations)
-    return mesh
+    return new_vertices, new_faces
 
 
 def simplify_quadric_error(mesh, face_count=1):
@@ -38,18 +38,23 @@ def simplify_quadric_error(mesh, face_count=1):
 if __name__ == '__main__':
     # Load mesh and print information
     # mesh = trimesh.load_mesh('../assets/cube.obj')
-    # mesh = trimesh.creation.box(extents=[1, 1, 1])
+    mesh = trimesh.creation.box(extents=[2, 2, 2])
     # print(f'Mesh Info: {mesh}')
 
     # apply loop subdivision over the loaded mesh
-    # mesh_subdivided = mesh.subdivide_loop(iterations=1)
+    mesh_subdivided = mesh.subdivide_loop(iterations=3)
+    # mesh_subdivided.show()
+    # import pdb; pdb.set_trace()
 
     # TODO: implement your own loop subdivision here
-    # mesh_subdivided = subdivision_loop(mesh, iterations=1)
+    # mesh_subdivided = subdivision_loop(mesh, iterations=2)
 
     # print the new mesh information and save the mesh
     # print(f'Subdivided Mesh Info: {mesh_subdivided}')
     # mesh_subdivided.export('../assets/assignment1/cube_subdivided.obj')
+    # mesh_subdivided.export('temp2.obj')
+    # import sys
+    # sys.exit(0)
 
     # quadratic error mesh decimation
     # mesh_decimated = mesh.simplify_quadric_decimation(4)
@@ -66,7 +71,9 @@ if __name__ == '__main__':
     # Load mesh
     try:
         mesh = src.load_3d_file(OBJ_FILE)
-        mesh_subdivided = subdivision_loop(mesh, iterations=1000)
+        # TODO: implement your own loop subdivision here
+        mesh_subdivided_vertices, mesh_subdivided_faces = subdivision_loop(mesh, iterations=3)
+        mesh.save(mesh_subdivided_vertices, mesh_subdivided_faces, '../assets/results/assignment1/cube_subdivided.obj')
     except Exception as e:
         # # To get the stack trace, use the following line instead:
         raise e

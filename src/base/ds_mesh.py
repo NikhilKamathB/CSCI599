@@ -2,6 +2,7 @@
 # Data structure for the mesh must be defined in this file.
 ###################################################################################################
 
+import os
 import logging
 import numpy as np
 from typing import DefaultDict, Tuple
@@ -185,3 +186,28 @@ class NpMesh:
                 - numpy array of dtype float32
         """
         return np.asarray(data, dtype=np.float32)
+    
+    @staticmethod
+    def save(vertices: np.ndarray, faces: np.ndarray, file_path: str) -> None:
+        """
+            Save the vertices and faces to a .obj file.
+            Input parameters:
+                - vertices: numpy array of vertices
+                - faces: numpy array of faces
+                - file_path: path to the file
+        """
+        try:
+            if file_path is None or ".obj" not in file_path:
+                logger.error(f"{NpMesh.__LOG_PREFIX__}: Invalid file path")
+                raise ValueError("Invalid file path")
+            logger.info(f"{NpMesh.__LOG_PREFIX__}: Saving the data in the file: {file_path}")
+            if os.path.exists(file_path):
+                os.remove(file_path)
+            with open(file_path, 'w') as file:
+                for vertex in vertices:
+                    file.write(f"v {' '.join(map(str, vertex))}\n")
+                for face in faces:
+                    file.write(f"f {' '.join(map(str, face))}\n")
+        except Exception as e:
+            logger.error(f"{NpMesh.__LOG_PREFIX__}: Error while saving the data in the file: {file_path}")
+            raise e
