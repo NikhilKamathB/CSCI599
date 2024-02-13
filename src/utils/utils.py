@@ -2,6 +2,7 @@
 # Miscelaneous utilities for the project goes here
 ###################################################################################################
 
+import os
 import numpy as np
 from typing import Tuple
 
@@ -25,6 +26,16 @@ def floatify(item: list) -> list:
         - list of floats
     """
     return list(map(float, item))
+
+def convert_to_numpy_matrix(data: list) -> np.ndarray:
+    """
+        Converts list to a numpy array.
+        Input parameters:
+            - data: list of items
+        Output:
+            - numpy array of dtype float32
+    """
+    return np.asarray(data, dtype=np.float32)
 
 def get_edges_from_faces_vstack(faces: np.ndarray) -> np.ndarray:
     """
@@ -132,3 +143,19 @@ def get_incident_matrix(edges: np.ndarray) -> Tuple[np.ndarray, np.ndarray, np.n
     incident_matrix[inverse[:, 1], inverse[:, 0]] = True
     neighbours = incident_matrix.sum(axis=-1)
     return incident_matrix, vertices, neighbours
+
+def save_obj(vertices: np.ndarray, faces: np.ndarray, file_path: str) -> None:
+    """
+    Save the vertices and faces to a .obj file.
+    Input parameters:
+        - vertices: numpy array of vertices
+        - faces: numpy array of faces
+        - file_path: path to the file
+    """
+    if os.path.exists(file_path):
+        os.remove(file_path)
+    with open(file_path, 'w') as file:
+        for vertex in vertices:
+            file.write(f"v {' '.join(map(str, vertex))}\n")
+        for face in faces:
+            file.write(f"f {' '.join(map(str, face))}\n")

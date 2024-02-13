@@ -5,6 +5,7 @@
 import os
 import logging
 import numpy as np
+import src.utils.utils as utils
 from typing import DefaultDict, Tuple
 from src.remesh import Remesh
 
@@ -52,7 +53,7 @@ class NpMesh:
             logger.error(
                 f"{self.__LOG_PREFIX__}: Vertices not found in the mesh, vertices must be denoted by 'v' in the mesh default dict")
             raise ValueError("Vertices not found in the mesh, vertices must be denoted by 'v' in the mesh default dict")
-        return self.convert_to_numpy_matrix(self.raw_mesh['v'])
+        return utils.convert_to_numpy_matrix(self.raw_mesh['v'])
 
     def _get_texture_coordinates(self) -> np.ndarray:
         """
@@ -66,7 +67,7 @@ class NpMesh:
                 f"{self.__LOG_PREFIX__}: Texture coordinates not found in the mesh, texture coordinates must be denoted by 'vt' in the mesh default dict")
             raise ValueError(
                 "Texture coordinates not found in the mesh, texture coordinates must be denoted by 'vt' in the mesh default dict")
-        return self.convert_to_numpy_matrix(self.raw_mesh['vt'])
+        return utils.convert_to_numpy_matrix(self.raw_mesh['vt'])
     
     def _get_vertex_normals(self) -> np.ndarray:
         """
@@ -80,7 +81,7 @@ class NpMesh:
                 f"{self.__LOG_PREFIX__}: Vertex normals not found in the mesh, vertex normals must be denoted by 'vn' in the mesh default dict")
             raise ValueError(
                 "Vertex normals not found in the mesh, vertex normals must be denoted by 'vn' in the mesh default dict")
-        return self.convert_to_numpy_matrix(self.raw_mesh['vn'])
+        return utils.convert_to_numpy_matrix(self.raw_mesh['vn'])
     
     def _get_faces(self) -> np.ndarray:
         """
@@ -93,7 +94,7 @@ class NpMesh:
             logger.error(
                 f"{self.__LOG_PREFIX__}: Faces not found in the mesh, faces must be denoted by 'f' in the mesh default dict")
             raise ValueError("Faces not found in the mesh, faces must be denoted by 'f' in the mesh default dict")
-        return self.convert_to_numpy_matrix(self.raw_mesh['f'])
+        return utils.convert_to_numpy_matrix(self.raw_mesh['f'])
     
     def _get_face_vertices(self) -> np.ndarray:
         """
@@ -146,19 +147,6 @@ class NpMesh:
         except Exception as e:
             logger.error(f"{self.__LOG_PREFIX__}: Error while building the mesh")
             raise e
-    
-    def get_face_items(self) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
-        """
-            Get the face items from the mesh.
-            Output:
-                - tuple of numpy array of face items
-        """
-        try:
-            logger.info(f"{self.__LOG_PREFIX__}: Getting the face items of the mesh")
-            return self.faces, self.faces_texture_coordinates, self.faces_vertex_normals
-        except Exception as e:
-            logger.error(f"{self.__LOG_PREFIX__}: Error while getting the face items of the mesh")
-            raise e
         
     def loop_subdivision(self, iterations=1) -> Tuple[np.ndarray, np.ndarray]:
         """
@@ -177,17 +165,6 @@ class NpMesh:
             raise e
     
     @staticmethod
-    def convert_to_numpy_matrix(data: list) -> np.ndarray:
-        """
-            Converts list to a numpy array.
-            Input parameters:
-                - data: list of items
-            Output:
-                - numpy array of dtype float32
-        """
-        return np.asarray(data, dtype=np.float32)
-    
-    @staticmethod
     def save(vertices: np.ndarray, faces: np.ndarray, file_path: str) -> None:
         """
             Save the vertices and faces to a .obj file.
@@ -201,13 +178,7 @@ class NpMesh:
                 logger.error(f"{NpMesh.__LOG_PREFIX__}: Invalid file path")
                 raise ValueError("Invalid file path")
             logger.info(f"{NpMesh.__LOG_PREFIX__}: Saving the data in the file: {file_path}")
-            if os.path.exists(file_path):
-                os.remove(file_path)
-            with open(file_path, 'w') as file:
-                for vertex in vertices:
-                    file.write(f"v {' '.join(map(str, vertex))}\n")
-                for face in faces:
-                    file.write(f"f {' '.join(map(str, face))}\n")
+            utils.save_obj(vertices, faces, file_path)
         except Exception as e:
             logger.error(f"{NpMesh.__LOG_PREFIX__}: Error while saving the data in the file: {file_path}")
             raise e
