@@ -71,8 +71,8 @@ def load_3d_file(file_path: str, base_ds: str = "np") -> Union[NpMesh, None]:
         logger.error(f"{__LOG_PREFIX__}: Unsupported file format: {file_path}")
         raise NotImplementedError(f"Unsupported file format: {file_path}")
     if mesh is None:
-        logger.error(f"{__LOG_PREFIX__}: Unable ot load the mesh as it is `None`")
-        raise ValueError(f"Unable ot load the mesh as it is `None`")
+        logger.error(f"{__LOG_PREFIX__}: Unable to load the mesh as it is `None`")
+        raise ValueError(f"Unable to load the mesh as it is `None`")
     if base_ds == "np":
         return NpMesh(mesh)
     else:
