@@ -83,38 +83,6 @@ def get_matching_row_indices(a1: np.ndarray, a2: np.ndarray) -> Tuple[np.ndarray
     a1_match, a2_match = np.where(np.all(a1[:, np.newaxis] == a2, axis=-1))
     return a1_match, a2_match
 
-def get_edges(faces: np.ndarray) -> Tuple[np.ndarray, ...]:
-    """
-    Get all the edges and a set of unique edges of the mesh given a list of faces.
-    Input parameters:
-        - faces: numpy ndarray of faces (n x 3)
-    Output:
-        - og_edges: numpy ndarray of original edges (m x 2)
-        - edges: numpy ndarray of (sorted) edges (m x 2)
-        - face_indices: numpy ndarray of face indices (m,)
-        - unique_edges: numpy ndarray of unique edges (p x 2)
-        - unique_edge_indices: numpy ndarray of unique edge indices (p,)
-        - unique_inverse: numpy ndarray of unique inverse (m,)
-        - interior_edges: numpy ndarray of interior edges (x, 2)
-        - boundary_edges: numpy ndarray of boundary edges (y, 2)
-        - left_interior_edge_matches: numpy ndarray of left interior edge matches (z,)
-        - right_interior_edge_matches: numpy ndarray of right interior edge matches (z,)
-        - left_boundary_edge_matches: numpy ndarray of left boundary edge matches (w,)
-        - right_boundary_edge_matches: numpy ndarray of right boundary edge matches (w,)
-    """
-    edges, og_edges = get_edges_from_faces_vstack(faces), get_edges_from_faces_hstack(faces)
-    edges.sort(axis=1)
-    unique_edges, unique_edge_indices, unique_inverse = np.unique(edges, axis=0, return_index=True, return_inverse=True)
-    face_indices = np.tile(np.arange(len(faces)), 3)
-    interior_edges, boundary_edges = get_special_edges(unique_edges, unique_inverse)
-    left_interior_edge_matches, right_interior_edge_matches = get_matching_row_indices(edges, interior_edges)
-    left_boundary_edge_matches, right_boundary_edge_matches = get_matching_row_indices(edges, boundary_edges)
-    return og_edges, edges, face_indices, \
-        unique_edges, unique_edge_indices, unique_inverse, \
-        interior_edges, boundary_edges, \
-        left_interior_edge_matches, right_interior_edge_matches, \
-        left_boundary_edge_matches, right_boundary_edge_matches
-
 def validate_triangulated_mesh(edges: np.ndarray) -> bool:
     """
     Validate that the mesh obeys traingulation rules:
@@ -127,12 +95,12 @@ def validate_triangulated_mesh(edges: np.ndarray) -> bool:
     _, count_array = np.unique(edges, axis=0, return_counts=True)
     return np.all(count_array <= 2)
 
-
-def get_incident_matrix(edges: np.ndarray) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
+def get_incident_matrix(edges: np.ndarray, clean: bool = False) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
     """
     Get the incident matrix of the mesh given a list of edges.
     Input parameters:
         - edges: numpy ndarray of unique edges (m x 2)
+        - clean: boolean indicating whether to clean the incident matrix after creation, all clean operations can be done within the block
     Output:
         - a tuple of numpy arrays representing the incident matrix (n x n), unique vertices (n,) and total neighbours (n,)
     """
@@ -141,6 +109,8 @@ def get_incident_matrix(edges: np.ndarray) -> Tuple[np.ndarray, np.ndarray, np.n
     incident_matrix = np.zeros((len(vertices), len(vertices)), dtype=bool)
     incident_matrix[inverse[:, 0], inverse[:, 1]] = True
     incident_matrix[inverse[:, 1], inverse[:, 0]] = True
+    if clean:
+        np.fill_diagonal(incident_matrix, False)
     neighbours = incident_matrix.sum(axis=-1)
     return incident_matrix, vertices, neighbours
 
