@@ -48,7 +48,7 @@ if __name__ == '__main__':
     parser.add_argument("-i", "--obj_file", type=str, default='../assets/cube.obj', help="Path to the .obj file")
     parser.add_argument("-o", "--output_dir", type=str, default='../assets/results/assignment1', help="Path to the output directory in which .obj file will be stored")
     parser.add_argument("-s", "--subdivision", type=int, default=3, help="Number of iterations for Loop subdivision")
-    parser.add_argument("-d", "--decimation", type=int, default=10, help="Number of faces desired in the resulting mesh after decimation")
+    parser.add_argument("-d", "--decimation", type=int, default=7, help="Number of faces desired in the resulting mesh after decimation")
     args = parser.parse_args()
     
     # Global variables
@@ -56,6 +56,9 @@ if __name__ == '__main__':
     OUTPUT_DIR = args.output_dir
     SUBDIVISION = args.subdivision
     DECIMATION = args.decimation
+
+    # Make the output directory if it does not exist
+    os.makedirs(OUTPUT_DIR, exist_ok=True)
 
     ############################################################
     ########### Assignment 1. Trimesh implementation ###########

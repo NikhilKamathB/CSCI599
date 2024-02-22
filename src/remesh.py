@@ -15,6 +15,7 @@ from src.utils.utils import (
     validate_triangulated_mesh, get_matching_row_indices, get_incident_matrix
 )
 
+
 logger = logging.getLogger(__name__)
 
 
@@ -25,9 +26,10 @@ class Remesh:
     """
 
     __LOG_PREFIX__ = "Remesh()"
-    __VERBOSE__ = False
+    __VERBOSE__ = True
     __PLOT_EVERY__ = 1
     __EPSILON__ = 1e-13
+    __PLOT_DIRECTORY__ = "../assets/plot/assignment1"
 
     def __init__(self, vertices: np.ndarray = None, faces: np.ndarray = None) -> None:
         """
@@ -133,7 +135,7 @@ class Remesh:
         plt.show()
 
     @staticmethod
-    def _plot_faces(vertex: np.ndarray, faces: np.ndarray, figsize: Tuple[int, int] = (12, 8), alpha: float = 0.5, x_label: str = 'X', y_label: str = 'Y', z_label: str = 'Z', title: str = "3D face plot") -> None:
+    def _plot_faces(vertex: np.ndarray, faces: np.ndarray, figsize: Tuple[int, int] = (12, 8), alpha: float = 0.5, x_label: str = 'X', y_label: str = 'Y', z_label: str = 'Z', title: str = "3D face plot", save: bool = False, file_name: str = "face") -> None:
         """
         Plot the faces of the mesh.
         Input parameters:
@@ -164,6 +166,8 @@ class Remesh:
         ax.set_zlabel(z_label)
         ax.text2D(0.5, 1.0, title, transform=ax.transAxes,
                   ha='center', va='top')
+        if save:
+            plt.savefig(f"{Remesh.__PLOT_DIRECTORY__}/{file_name}.png")
         plt.show()
 
     @staticmethod
@@ -467,7 +471,11 @@ class Remesh:
         Driver code for implementing Loop Subdivision: apply Loop subdivision to the input mesh.
         The algorithm is implemented using matrix operations to improve performance by avoiding loops.
         Algorithm:
-            TODO: Add the algorithm here
+            1. For each iteration, apply the subdivision
+                a. Get all the edges of the mesh
+                b. Get the odd vertices of the mesh
+                c. Get the even vertices of the mesh
+                d. Update the faces and vertices of the mesh
         Input parameters:
             - vertices: numpy ndarray of vertices
             - faces: numpy ndarray of faces, note that the faces should be triangulated
@@ -523,7 +531,7 @@ class Remesh:
                 Remesh._plot_faces(
                     vertices, faces, title=f"3D Plot - Original Faces at the start of this iteration | {len(faces)} Faces")
                 Remesh._plot_faces(
-                    new_vertices, new_faces, title=f"3D Plot - Loop Subdivision: Iteration {run+1} - New Faces | {len(new_faces)} Faces")
+                    new_vertices, new_faces, title=f"3D Plot - Loop Subdivision: Iteration {run+1} - New Faces | {len(new_faces)} Faces", save=True, file_name=f"loop_subdivision_{run+1}")
             # update the vertices and faces
             vertices, faces = new_vertices, new_faces
         logger.info(
@@ -761,7 +769,17 @@ class Remesh:
         Driver code for implementing decimation: apply decimation to the input mesh.
         The algorithm is implemented using matrix operations to improve performance by avoiding loops.
         Algorithm:
-            TODO: Add the algorithm here
+            1. Get the edges of the mesh
+            2. Get the face normals and the constant 'd'
+            3. Get the Q matrix of vertices
+            4. Get the valid vertex pairs
+            5. Get the optimal contractions
+            6. While the number of faces is greater than the reduce_faces_to, apply decimation:
+                a. Get the minimum error elements from pair contractions
+                b. Update vertices and Q matrix
+                c. Add the deleted vertex to the tracker set
+                d. Update faces and edges
+                e. Update the cost of the optimal contractions associated with `v1` the newly added vertex
         Input parameters:
             - vertices: numpy ndarray of vertices
             - faces: numpy ndarray of faces, note that the faces should be triangulated
@@ -851,7 +869,7 @@ class Remesh:
                 Remesh._plot_faces(
                     vertices, faces, title=f"3D Plot - Original Faces at the start of this iteration | {len(faces)} Faces")
                 Remesh._plot_faces(
-                    vertices_copy, faces_copy, title=f"3D Plot - decimation: Iteration {ctr+1} - New Faces | {len(faces_copy)} Faces")
+                    vertices_copy, faces_copy, title=f"3D Plot - decimation: Iteration {ctr+1} - New Faces | {len(faces_copy)} Faces", save=True, file_name=f"decimation_{ctr+1}")
             # Update the face if there is only one face for visualization
             # Trimesh workflow
             if len(faces_copy) == 1:
