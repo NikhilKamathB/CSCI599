@@ -2,6 +2,7 @@
 # Any remeshing angorithms should be implemented here.
 # Algorithms implemented:
 #   - Loop Subdivision
+#   - Decimation using Quadric Error Metrics
 ##########################################################################################################
 
 import heapq
