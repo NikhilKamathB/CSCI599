@@ -26,7 +26,7 @@ class Remesh:
     """
 
     __LOG_PREFIX__ = "Remesh()"
-    __VERBOSE__ = True
+    __VERBOSE__ = False
     __PLOT_EVERY__ = 1
     __EPSILON__ = 1e-13
     __PLOT_DIRECTORY__ = "../assets/plot/assignment1"
@@ -589,7 +589,7 @@ class Remesh:
         loop_edge = np.concatenate(
             (unique_vertices[:, None], unique_vertices[:, None]), axis=1)
         vf_mask, _ = Remesh._get_vertex_face_mask(faces, loop_edge)
-        # Trnspose to get (number of vertex x number of faces)
+        # Transpose to get (number of vertex x number of faces)
         vf_mask = vf_mask.T
         # 2. Get the 'd' of the planes
         d = -np.sum(face_normal * Remesh._get_vertices_from_idx_or_edges(vertices,
