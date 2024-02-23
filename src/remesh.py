@@ -26,7 +26,6 @@ class Remesh:
     """
 
     __LOG_PREFIX__ = "Remesh()"
-    __VERBOSE__ = False
     __PLOT_EVERY__ = 1
     __EPSILON__ = 1e-13
     __PLOT_DIRECTORY__ = "../assets/plot/assignment1"
@@ -45,7 +44,7 @@ class Remesh:
         self.vertices = vertices
         self.faces = faces
 
-    def loop_subdivision(self, iterations: int = 1) -> Tuple[np.ndarray, np.ndarray]:
+    def loop_subdivision(self, iterations: int = 1, fixed: bool = False, verbose: bool = True) -> Tuple[np.ndarray, np.ndarray]:
         """
         Apply Loop subdivision to the input mesh for the specified number of iterations.
         Loop subdivision:
@@ -54,18 +53,20 @@ class Remesh:
         and apprxoimating thier positions to get a smoother surface.
         Input parameters:
             - iterations: number of iterations
+            - fixed: boolean indicating whether to keep the original vertices of the mesh fixed during mesh operations
+            - verbose: boolean indicating whether to make verbose
         Output:
             - vertices and faces after subdivision
         """
         logger.info(
             f"{self.__LOG_PREFIX__}: Applying Loop subdivision to the input mesh")
         new_vertices, new_faces = self._loop_subdivision(
-            vertices=self.vertices, faces=self.faces, iterations=iterations)
+            vertices=self.vertices, faces=self.faces, iterations=iterations, fixed=fixed, verbose=verbose)
         logger.info(
             f"{self.__LOG_PREFIX__}: Loop subdivision applied successfully")
         return new_vertices, new_faces
 
-    def decimation(self, faces: int = 3) -> Tuple[np.ndarray, np.ndarray]:
+    def decimation(self, faces: int = 3, fixed: bool = False, verbose: bool = True) -> Tuple[np.ndarray, np.ndarray]:
         """
         Apply decimation to the input mesh for the specified number of faces.
         Decimation:
@@ -74,13 +75,15 @@ class Remesh:
         Decimation is the process of reducing the number of faces in a mesh.
         Input parameters:
             - faces: number of faces
+            - fixed: boolean indicating whether to keep the original vertices of the mesh fixed during mesh operations
+            - verbose: boolean indicating whether to make verbose
         Output:
             - vertices and faces after decimation
         """
         logger.info(
             f"{self.__LOG_PREFIX__}: Applying decimation to the input mesh")
         new_vertices, new_faces = self._decimation(
-            vertices=self.vertices, faces=self.faces, reduce_faces_to=faces)
+            vertices=self.vertices, faces=self.faces, reduce_faces_to=faces, fixed=fixed, verbose=verbose)
         logger.info(f"{self.__LOG_PREFIX__}: Decimation applied successfully")
         return new_vertices, new_faces
 
@@ -393,6 +396,7 @@ class Remesh:
         incident_matrix, vertices_idx, k = get_incident_matrix(edges)
         # 2. Calculate beta
         # Formula: beta = (1/k) * (5/8 - (3/8 + 1/4 * cos(2 * pi / k)) ** 2)
+        k = np.maximum(k, Remesh.__EPSILON__) # to avoid division by zero, just in case
         beta = (1/k) * ((5/8) - ((3/8) + (1/4) * np.cos(2 * np.pi / k)) ** 2)
         # 3. Get neighbors of the vertices
         k_neighbors = incident_matrix * vertices_idx
@@ -466,7 +470,7 @@ class Remesh:
         return new_face
 
     @staticmethod
-    def _loop_subdivision(vertices: np.ndarray, faces: np.ndarray, iterations: int = 1) -> Tuple[np.ndarray, np.ndarray]:
+    def _loop_subdivision(vertices: np.ndarray, faces: np.ndarray, iterations: int = 1, fixed: bool = False, verbose: bool = True) -> Tuple[np.ndarray, np.ndarray]:
         """
         Driver code for implementing Loop Subdivision: apply Loop subdivision to the input mesh.
         The algorithm is implemented using matrix operations to improve performance by avoiding loops.
@@ -480,6 +484,8 @@ class Remesh:
             - vertices: numpy ndarray of vertices
             - faces: numpy ndarray of faces, note that the faces should be triangulated
             - iterations: number of iterations, default is 1
+            - fixed: boolean indicating whether to keep the original vertices of the mesh fixed during mesh operations
+            - verbose: boolean indicating whether to make verbose
         Output:
             - vertices and faces after subdivision
         """
@@ -521,7 +527,7 @@ class Remesh:
             # Note the order - required for the face generation
             new_vertices = np.vstack((even_vertices, odd_vertices))
             # Plot for visualization
-            if Remesh.__VERBOSE__ and run % Remesh.__PLOT_EVERY__ == 0:
+            if verbose and run % Remesh.__PLOT_EVERY__ == 0:
                 Remesh._plot(vertices, unique_edges, odd_vertices,
                              title=f"Loop Subdivision: Iteration {run+1} - Odd Vertices")
                 Remesh._plot(vertices, unique_edges, even_vertices,
@@ -764,7 +770,7 @@ class Remesh:
         return new_vertices, new_faces
 
     @staticmethod
-    def _decimation(vertices: np.ndarray, faces: np.ndarray, reduce_faces_to: int = 3) -> Tuple[np.ndarray, np.ndarray]:
+    def _decimation(vertices: np.ndarray, faces: np.ndarray, reduce_faces_to: int = 3, fixed: bool = False, verbose: bool = True) -> Tuple[np.ndarray, np.ndarray]:
         """
         Driver code for implementing decimation: apply decimation to the input mesh.
         The algorithm is implemented using matrix operations to improve performance by avoiding loops.
@@ -784,6 +790,8 @@ class Remesh:
             - vertices: numpy ndarray of vertices
             - faces: numpy ndarray of faces, note that the faces should be triangulated
             - reduce_faces_to: number of faces to reduce to, default is 3
+            - fixed: boolean indicating whether to keep the original vertices of the mesh fixed during mesh operations
+            - verbose: boolean indicating whether to make verbose
         Output:
             - vertices and faces after decimation
         """
@@ -823,7 +831,7 @@ class Remesh:
         new_vertices, new_faces = vertices.copy(), faces.copy()
         while len(faces_copy) > reduce_faces_to:
             logger.info(
-                f"{Remesh.__LOG_PREFIX__}: Applying Decimation algorithm to the input mesh: Iteration {ctr+1} | {len(new_vertices)} Vertices | {len(new_faces)} Faces")
+                f"{Remesh.__LOG_PREFIX__}: Applying Decimation algorithm to the input mesh: Decimation {ctr+1} | {len(new_vertices)} Vertices | {len(new_faces)} Faces")
             # Validate triangle mesh
             if not validate_triangulated_mesh(edges_copy):
                 logger.error(
@@ -842,11 +850,12 @@ class Remesh:
             # Skip the deleted vertices
             if v1_idx in deleted_vertices or v2_idx in deleted_vertices:
                 continue
-            # Update vertices
-            vertices_copy[v1_idx-1] = v_dash # since, v1_idx is one indexed
-            # Update Q matrix
-            Q1, Q2 = q_matrix_copy[v1_idx-1], q_matrix_copy[v2_idx-1] # since, v1_idx, v2_idx are one indexed
-            q_matrix_copy[v1_idx-1] = Q1 + Q2
+            if not fixed:
+                # Update vertices
+                vertices_copy[v1_idx-1] = v_dash # since, v1_idx is one indexed
+                # Update Q matrix
+                Q1, Q2 = q_matrix_copy[v1_idx-1], q_matrix_copy[v2_idx-1] # since, v1_idx, v2_idx are one indexed
+                q_matrix_copy[v1_idx-1] = Q1 + Q2
             # Add the deleted vertex to the set
             deleted_vertices.add(v2_idx) # note that, v2_idx is one indexed
             # Update faces and edges
@@ -863,13 +872,13 @@ class Remesh:
             optimal_contractions = Remesh._get_optimal_contractions(
                 vertices_copy, v1_valid_pairs, q_matrix_copy, heap=optimal_contractions)
             # Plot for visualization
-            if Remesh.__VERBOSE__ and ctr % Remesh.__PLOT_EVERY__ == 0:
+            if verbose and ctr % Remesh.__PLOT_EVERY__ == 0:
                 Remesh._plot(vertices, unique_edges, vertices_copy, p_alpha=0.15,
-                             title=f"Decimation: Iteration {ctr+1} - Decimated vertices")
+                             title=f"Decimation: Decimation {ctr+1} - Decimated vertices")
                 Remesh._plot_faces(
-                    vertices, faces, title=f"3D Plot - Original Faces at the start of this iteration | {len(faces)} Faces")
+                    vertices, faces, title=f"3D Plot - Original Faces at the start of this decimation | {len(faces)} Faces")
                 Remesh._plot_faces(
-                    vertices_copy, faces_copy, title=f"3D Plot - decimation: Iteration {ctr+1} - New Faces | {len(faces_copy)} Faces", save=True, file_name=f"decimation_{ctr+1}")
+                    vertices_copy, faces_copy, title=f"3D Plot - decimation: Decimation {ctr+1} - New Faces | {len(faces_copy)} Faces", save=True, file_name=f"decimation_{ctr+1}")
             # Update the face if there is only one face for visualization
             # Trimesh workflow
             if len(faces_copy) == 1:

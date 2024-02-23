@@ -148,33 +148,37 @@ class NpMesh:
             logger.error(f"{self.__LOG_PREFIX__}: Error while building the mesh")
             raise e
         
-    def loop_subdivision(self, iterations: int = 1) -> Tuple[np.ndarray, np.ndarray]:
+    def loop_subdivision(self, iterations: int = 1, fixed: bool = False, verbose: bool = True) -> Tuple[np.ndarray, np.ndarray]:
         """
             Apply Loop subdivision to the input mesh for the specified number of iterations.
             Input parameters:
                 - iterations: number of iterations
+                - fixed: boolean indicating whether to keep the original vertices of the mesh fixed during mesh operations
+                - verbose: boolean indicating whether to make verbose
             Output:
                 - vertices and faces after subdivision
         """
         try:
             logger.info(f"{self.__LOG_PREFIX__}: Applying Loop subdivision to the input mesh")
-            new_vertices, new_faces = self.remesh.loop_subdivision(iterations=iterations)
+            new_vertices, new_faces = self.remesh.loop_subdivision(iterations=iterations, fixed=fixed, verbose=verbose)
             return new_vertices, new_faces
         except Exception as e:
             logger.error(f"{self.__LOG_PREFIX__}: Error while applying Loop subdivision to the input mesh")
             raise e
     
-    def decimation(self, faces: int = 1) -> Tuple[np.ndarray, np.ndarray]:
+    def decimation(self, faces: int = 1, fixed: bool = False, verbose: bool = True) -> Tuple[np.ndarray, np.ndarray]:
         """
             Apply decimation to the input mesh until the target face count is reached.
             Input parameters:
                 - faces: number of faces desired in the resulting mesh.
+                - fixed: boolean indicating whether to keep the original vertices of the mesh fixed during mesh operations
+                - verbose: boolean indicating whether to make verbose
             Output:
                 - vertices and faces after decimation
         """
         try:
             logger.info(f"{self.__LOG_PREFIX__}: Applying decimation to the input mesh")
-            new_vertices, new_faces = self.remesh.decimation(faces=faces)
+            new_vertices, new_faces = self.remesh.decimation(faces=faces, fixed=fixed, verbose=verbose)
             return new_vertices, new_faces
         except Exception as e:
             logger.error(f"{self.__LOG_PREFIX__}: Error while applying decimation to the input mesh")
