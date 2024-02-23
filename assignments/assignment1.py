@@ -47,7 +47,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description="Mesh operations - Loop subdivision and Decimation.")
     parser.add_argument("-i", "--obj_file", type=str, default='../assets/cube.obj', help="Path to the .obj file")
     parser.add_argument("-o", "--output_dir", type=str, default='../assets/results/assignment1', help="Path to the output directory in which .obj file will be stored")
-    parser.add_argument("-s", "--subdivision", type=int, default=3, help="Number of iterations for Loop subdivision")
+    parser.add_argument("-s", "--subdivision", type=int, default=4, help="Number of iterations for Loop subdivision")
     parser.add_argument("-d", "--decimation", type=int, default=7, help="Number of faces desired in the resulting mesh after decimation")
     args = parser.parse_args()
     
