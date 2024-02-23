@@ -1,0 +1,388 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+	<meta charset="utf-8">
+	<title>assignment1</title>
+	<style>
+		body {
+			margin: 0;
+		}
+	</style>
+	<script type="importmap">
+        {
+          "imports": {
+            "three": "https://unpkg.com/three@0.147.0/build/three.module.js",
+            "three/addons/": "https://unpkg.com/three@0.147.0/examples/jsm/"
+          }
+        }
+    </script>
+</head>
+
+<body>
+	<h1 style="text-align: center; margin-bottom: 5rem;">Assignment 1</h1>
+
+	<div style="margin-left: 3rem; margin-right: 3rem; text-align: justify;">
+
+		<hr>
+
+		<p>This is CSCI 599 wiki, an alternative to the writeup required by the course work. You may find the
+			deliverables for
+			each assignment within this wiki.</p>
+
+		<p>The repository has the following folder structure:</p>
+
+		<pre>
+		|- assets (holds all kind of unstructured files such as images, 3D objects files, etc)
+		    |- result (resultant of every assignment goes here)
+		        |- assignment1 (holds resultant of assignment 1)
+		|- assignments (this contains the csci 599 assignments/questions)
+		|- html (given script - for visualization)
+		|- js (given script - html subordinates)
+		|- src (driver folder that contains all the necessary code to complete the tasks/assignments)
+		    |- base (a base folder that defines any foundational entities such as the core data structures, pre-hooks, post-hooks, etc)
+		    |- utils (supporting executables goes here)
+		    |- remesh.py (driver code for implementing loop subdivision and decimation - assignment 1)
+		|- index.html (given script - link to assignments)
+		|- requirements.txt (contains all the dependencies)
+		|- README.md
+		</pre>
+		
+		<hr>
+
+		<p>In this assignment, we have implemented surface subdivision and simplification/decimation using Loop
+			Subdivision and
+			Quadric Error Metrics, respectively. Before going ahead, kindly have a look at the <a
+				href="https://github.com/NikhilKamathB/CSCI599/wiki">Home</a> page to understand how the folders in this
+			repository have been organized. Also, make sure you have installed all the necessary libraries from the <a
+				href="https://github.com/NikhilKamathB/CSCI599/blob/main/requirements.txt">requirements.txt</a> file
+			which can
+			be found at root of this repo.</p>
+		<hr>
+
+		<h3>How do we run the project?</h3>
+
+		<p>To get the 'assignment 1' running, simply <code>cd</code> into <code>./assignments</code> folder and run
+			<code>python assignment1.py</code>. To get to know the usage of this script, run
+			<code>python assignment1.py -h</code>. Upon successful execution, you can find the results in
+			<code>./assets/results/assignment1</code> folder (default). Within this folder,
+			<code>cube_decimated.obj</code>
+			represents the decimation result and <code>cube_subdivided.obj</code> contains the subdivision results. To
+			verify
+			the results with <code>Trimesh</code>, you may comment/uncomment the necessary lines in
+			<code>assignment1.py</code>
+			and running it again.
+		</p>
+		<hr>
+
+		<h3>What data structure did we use to store the mesh?</h3>
+
+		<p>For this assignment, we have used <strong>Numpy arrays</strong> to store and perform operations on the mesh.
+			So why
+			<strong>Numpy arrays</strong>? Although, there were other choices such as half-edge, incident matrices
+			representation, etc. we have opted to go with <strong>Numpy</strong> because of its efficient computation.
+			Another
+			reason is that, we wanted to minimize the usage of loops in the scripts, which would otherwise lead to a
+			more time
+			complex solution. To perform various operations such as, identifying neighbors, getting special edges,
+			orienting
+			faces, computing equations of the plane, etc. we leverage the matrix operations (vectorization, broadcasting
+			and
+			parallelization) provided by <strong>Numpy</strong>.
+		</p>
+		<hr>
+
+		<h3>Loop Subdivision</h3>
+
+		<p>The following is the pseudo code used for implementing surface subdivision using Loop Subdivision:</p>
+
+		<pre><code>Algorithm:
+		
+		procedure loop_subdivision(mesh, iteration)
+		    i &lt;- 0
+		    repeat
+		        1. vertices &lt;- vertices of the mesh
+		           faces &lt;- faces of the mesh
+		           edges &lt;- edges of the mesh
+		        2. special_edges &lt;- get all the special edges such as interior, boundary and unique edges from "edges"
+		        3. odd_vertices &lt;- get the set of all approximated odd vertices from the mesh
+		        4. even_vertices &lt;- get the set of all approximated even vertices from the mesh
+		        5. new_faces &lt;- update faces
+		        6. new_vertices &lt;- stack(even_vertices, odd_vertices)
+		        7. rebuild mesh with new vertices and new faces
+		        8. i &lt;- i + 1
+		    until i &gt;= iteration
+		</code></pre>
+
+		<p><strong>Lets discuss about the runtime</strong> - The function <a
+				href="https://github.com/NikhilKamathB/CSCI599/blob/c624453264e23f00f794e5c3f24d7a1673efeb0f/src/utils/load.py#L17"><code>load_obj()</code></a>
+			loads the 3D object file into and intermediary dictionary in <code>O(lines)</code> time which laters get
+			translated
+			into our actual <code>Numpy</code> data structure as defined by our <a
+				href="https://github.com/NikhilKamathB/CSCI599/blob/c624453264e23f00f794e5c3f24d7a1673efeb0f/src/base/ds_mesh.py#L15"><code>NpMesh</code></a>
+			class. The member function associated with edge retrieval from a mesh, sorts the edges and then returns a
+			set of
+			unique edges and special edges. All this happens in <code>O(E log E)</code> time. The odd vertices are
+			defined by
+			one, the immediate neighbors and two the vertices of their opposite faces. Initially, we simply let the odd
+			vertices
+			to be the middle point of every edge, this happens in constant time due to <code>Numpy</code>. In similar
+			time
+			complexity we can get the immediate neighbors. Getting the vertices of the opposite faces involves
+			generating face
+			masks. This happens in <code>O(F * E)</code> time, since we need to compare the faces and edges to generate
+			the
+			mask. All other subordinate operations such as element-wise multiplication, negations, equality checks, etc
+			will
+			have the time complexity <code>O(n)</code>, where <code>n</code> is the total number of elements in the
+			matrix/array. Bottom line, we can get the odd vertices in <code>O(F * E)</code> time (number of Faces and
+			Edges).
+			Approximating the even vertices involves create an incident matrix, which gets done in <code>O(V * V)</code>
+			and
+			just like the previous statement, all element-wise operations takes <code>O(n)</code> time. Therefore,
+			computing
+			even vertices is upper bounded by <code>O(V * V)</code>. Updating faces, is associated with comparing each
+			edge with
+			all the existing edges and manipulating their indices. The time complexity of this function would be
+			<code>O(E^2 + V^2)</code>. With all this we build a new mesh and repeat the entire process until the
+			condition is
+			met. Therefore, the overall time complexity of the implemented loop subdivision is upper bounded by
+			<code>O(n^2)</code> (where <code>n</code> is the sum of vertices and edges) for every iteration.
+		</p>
+
+		<p>To run loop subdivision run the command <code>python assignment1.py -s &lt;ITERATION&gt;</code>. The result
+			of the
+			loop subdivision can be found in <code>./assets/results/assignment1/cube_subdivided.obj</code> (assuming
+			that the
+			param <code>--output_dir</code> remains unchanged).</p>
+
+		<p>The following images show the new mesh generated after every iteration (4 Iterations):</p>
+
+		<table style="text-align: center; margin: auto">
+			<tr>
+				<td>Iteration 1</td>
+				<td>Iteration 2</td>
+			</tr>
+			<tr>
+				<td><img src="https://github.com/NikhilKamathB/CSCI599/blob/main/assets/plot/assignment1/loop_subdivision_1.png?raw=true"
+						style="max-width: 40vw; height: auto;">
+				</td>
+				<td><img src="https://github.com/NikhilKamathB/CSCI599/blob/main/assets/plot/assignment1/loop_subdivision_2.png?raw=true"
+						style="max-width: 40vw; height: auto;">
+				</td>
+			</tr>
+			<tr>
+				<td>Iteration 3</td>
+				<td>Iteration 4</td>
+			</tr>
+			<tr>
+				<td><img src="https://github.com/NikhilKamathB/CSCI599/blob/main/assets/plot/assignment1/loop_subdivision_3.png?raw=true"
+						style="max-width: 40vw; height: auto;">
+				</td>
+				<td><img src="https://github.com/NikhilKamathB/CSCI599/blob/main/assets/plot/assignment1/loop_subdivision_4.png?raw=true"
+						style="max-width: 40vw; height: auto;">
+				</td>
+			</tr>
+		</table>
+		<p>After applying Loop Subdivision for 4 iterations, we get the following results:</p>
+		<div id="container1"></div>
+		<br>
+		<br>
+		<hr>
+
+		<h3>Decimation - Quadric Error Metrics</h3>
+
+		<p>The following is the pseudo code used for implementing surface simplification using <a
+				href="https://www.cs.cmu.edu/~./garland/Papers/quadrics.pdf">Quadric Error Metric</a>:</p>
+
+		<pre><code>Algorithm:
+		
+		procedure decimation(mesh, face_count)
+		    1. vertices &lt;- vertices of the mesh
+		       faces &lt;- faces of the mesh
+		       edges &lt;- edges of the mesh
+		       special_edges &lt;- get all the special edges such as interior, boundary and unique edges from "edges"
+		    2. face_normal &lt;- given the faces, get all the face normals
+		    3. q_matrix &lt;- use the face_normal to generate the Q matrix
+		    4. valid_pairs &lt;- get a list of all valid vertex pairs for contraction
+		    5. optimal_contraction_heap &lt;- get the cost of contracting every valid vertex pairs and their associate new v_dash into a heap
+		    6. repeat
+		        a. E, v_dash &lt;- pop the element with the least cost from the optimal_contraction_heap
+		        b. vertices, q_matrix &lt;- update vertices and q_matrix to accommodate new v_dash
+		        c. deleted_vertices &lt;- add the deleted vertex so as to keep track of them
+		        d. faces &lt;- update the faces to account for the new v_dash and the vertex deletion
+		        e. optimal_contraction_heap &lt;- update the heap by recording the cost of all valid pairs involving the most recently updated vertex (v1 - refer the paper)
+		        f. rebuild mesh with new vertices and new faces
+		      until face_count &gt;= faces.length
+		</code></pre>
+
+		<p><strong>Lets discuss about the runtime</strong> - The function <a
+				href="https://github.com/NikhilKamathB/CSCI599/blob/c624453264e23f00f794e5c3f24d7a1673efeb0f/src/utils/load.py#L17"><code>load_obj()</code></a>
+			loads the 3D object file into and intermediary dictionary in <code>O(lines)</code> time which laters get
+			translated
+			into our actual <code>Numpy</code> data structure as defined by our <a
+				href="https://github.com/NikhilKamathB/CSCI599/blob/c624453264e23f00f794e5c3f24d7a1673efeb0f/src/base/ds_mesh.py#L15"><code>NpMesh</code></a>
+			class. The member function associated with edge retrieval from a mesh, sorts the edges and then returns a
+			set of
+			unique edges and special edges. All this happens in <code>O(E log E)</code> time. Computing the normal
+			vector for
+			faces using <code>Numpy</code> falls in <code>O(F)</code> time. Following this, we have the function that
+			compute
+			the Q matrix for every face. Because this calculation involves computing the dot products, i.e matrix
+			multiplication, therefore the time complexity for this would be in <code>O(n^3)</code> and since we are
+			using
+			<code>Numpy</code> the upper bound is <code>O(n^2.&lt;something&gt;)</code>. Note that, this can be
+			misleading, the
+			dot product takes place between a fixed dimensional <code>(4 x 4)</code> <code>K</code> matrices and this
+			operation
+			happens <code>|V|</code> times. When <code>|V|</code> is large, we can say that time complexity of computing
+			the Q
+			matrix is <code>O(V)</code>. Gathering information about the valid vertices take <code>O(V * V)</code> time
+			due to
+			the computation of incident matrix. And finally, we have the error computation and extracting the optimal
+			<code>v_dash</code>. The most expensive operation in this is finding the inverse of the matrix which can be
+			in
+			<code>O(n^3)</code>, where <code>n</code> is the number of elements in the invertible matrix (refer paper).
+			Again,
+			just because the number of items are fixed, i.e we always take the inverse of a <code>(4 x 4)</code> matrix,
+			we can
+			say that the complexity of this operation boils down to <code>O(V)</code>. All other activities like
+			updating of
+			edges, faces, etc. is done in <code>O(n)</code> time, where <code>n</code> can represent the number of
+			faces/edges/vertices. All put together, we can say that the function is bounded by <code>O(n^2)</code>
+			(<code>n</code> -> vertices, assuming <code>|V| &gt;&gt; 4</code>) due to the incident matrix computation
+			(for every
+			while loop execution), other operations, more or less happens in <code>O(V)</code> time.
+		</p>
+
+		<p>To run decimation run the command <code>python assignment1.py -d &lt;FACE_COUNT&gt;</code>. The result of the
+			loop
+			subdivision can be found in <code>./assets/results/assignment1/cube_decimated.obj</code> (assuming that the
+			param
+			<code>--output_dir</code> remains unchanged).
+		</p>
+
+		<p>The following images show the new mesh generated after every decimation steps (Face count = 5):</p>
+
+		<table style="text-align: center; margin: auto">
+			<tr>
+				<td>Decimation 1</td>
+				<td>Decimation 2</td>
+			</tr>
+			<tr>
+				<td><img src="https://github.com/NikhilKamathB/CSCI599/blob/main/assets/plot/assignment1/decimation_1.png?raw=true"
+						style="max-width: 40vw; height: auto;"></td>
+				<td><img src="https://github.com/NikhilKamathB/CSCI599/blob/main/assets/plot/assignment1/decimation_2.png?raw=true"
+						style="max-width: 40vw; height: auto;"></td>
+			</tr>
+			<tr>
+				<td>Decimation 3</td>
+				<td>Decimation 4</td>
+			</tr>
+			<tr>
+				<td><img src="https://github.com/NikhilKamathB/CSCI599/blob/main/assets/plot/assignment1/decimation_3.png?raw=true"
+						style="max-width: 40vw; height: auto;"></td>
+				<td><img src="https://github.com/NikhilKamathB/CSCI599/blob/main/assets/plot/assignment1/decimation_4.png?raw=true"
+						style="max-width: 40vw; height: auto;"></td>
+			</tr>
+		</table>
+		<p>After applying Decimation and reducing the faces to 5, we get the following results</p>
+		<div id="container2"></div>
+		<br>
+		<br>
+		<hr>
+
+		<h3>Extra Credits</h3>
+
+		<ol>
+			<li>Analysis of corner cases and their potential solutions:
+				<ul>
+					<li>For the case of loop subdivision, we were supposed to work on a closed object like a cube. For
+						cases
+						like these, there will be no boundary edges/vertices, the entire object is built/constructed
+						using a set
+						of interior edges. The code in this repo, handles boundary edge/vertex as well. The
+						implementation can
+						be found in <code>_get_odd_vertices()</code> and <code>_get_even_vertices()</code> <a
+							href="https://github.com/NikhilKamathB/CSCI599/blob/main/src/remesh.py">here</a>. Yet
+						another issue
+						observed in my implementation was in decimation. When we set the desired face count to
+						<code>3</code> or
+						even <code>2</code> the code used to return only one face, which is technically correct. This
+						has been
+						rectified by adding another face in the counter clockwise direction of the existing one (check
+						out
+						<code>_decimation()</code> <a
+							href="https://github.com/NikhilKamathB/CSCI599/blob/main/src/remesh.py">here</a>), enabling
+						the
+						face/plane visualization in this case from all direction.
+					</li>
+					<li>When the number of vertices is way greater than the number of edges, most of the matrix elements
+						will be
+						either represented by a zero of a boolean false. Using such matrices for computation is
+						unnecessarily
+						resource heavy. We can address this by using the spare matrix representation enabling efficient
+						computation.</li>
+					<li>In the case of loop subdivision and perhaps decimation, on any 3D object, the resultant of
+						subdivision/decimation may lead to set of edges and vertices that do not obey the manifold rule
+						explained in the lecture. Because, our implementation strictly checks for the triangularity of
+						the mesh
+						after every iteration, I believe that this case is implicitly being handled.</li>
+					<li>Sometimes, we might want to maintain a subset boundaries or edges to preserve the object's
+						overall
+						appearance during decimation. We may address this by fixating on a set of vertices that define
+						these
+						boundaries/edges and then performing decimation. Similarly, we may have constrained
+						edges/vertices that
+						doesn't allow the algorithm the decimate on them, thus preserving important small features of
+						the
+						object. Loop subdivision, on the other hand, also leads to figure deformity in the areas which
+						contains
+						sharp curvature or creases. Again, this problem can be avoided by fixing a subset of vertices
+						and not
+						altering them during the subdivision process.</li>
+				</ul>
+			</li>
+			<li>Preserving the original vertices after decimation
+				<ul>
+					<li>Yes, the original vertices after decimation can be preserved (the vertices of the new meshes are
+						a
+						subset of the original vertices). To run this chunk of task, simply run the command
+						<code>python assignment1.py -d &lt;FACE_COUNT&gt; -f y</code>. The resultant looks something
+						like this
+						(when Face count = 5):
+					</li>
+				</ul>
+				<table style="text-align: center; margin: auto">
+					<tr>
+						<td>Decimation 1</td>
+						<td>Decimation 2</td>
+					</tr>
+					<tr>
+						<td><img src="https://github.com/NikhilKamathB/CSCI599/blob/main/assets/plot/assignment1/decimation_1.png?raw=true"
+								style="max-width: 40vw; height: auto;">
+						</td>
+						<td><img src="https://github.com/NikhilKamathB/CSCI599/blob/main/assets/plot/assignment1/decimation_2.png?raw=true"
+								style="max-width: 40vw; height: auto;">
+						</td>
+					</tr>
+					<tr>
+						<td>Decimation 3</td>
+						<td>Decimation 4</td>
+					</tr>
+					<tr>
+						<td><img src="https://github.com/NikhilKamathB/CSCI599/blob/main/assets/plot/assignment1/decimation_3.png?raw=true"
+								style="max-width: 40vw; height: auto;">
+						</td>
+						<td><img src="https://github.com/NikhilKamathB/CSCI599/blob/main/assets/plot/assignment1/decimation_4.png?raw=true"
+								style="max-width: 40vw; height: auto;">
+						</td>
+					</tr>
+				</table>
+			</li>
+		</ol>
+	</div>
+	<script type="module" src="assignment1.js"></script>
+</body>
+
+</html>
