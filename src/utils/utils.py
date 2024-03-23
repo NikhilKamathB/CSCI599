@@ -3,6 +3,7 @@
 ###################################################################################################
 
 import os
+import cv2
 import numpy as np
 from typing import Tuple
 
@@ -135,3 +136,59 @@ def save_obj(vertices: np.ndarray, faces: np.ndarray, file_path: str) -> None:
             file.write(f"v {' '.join(map(str, vertex))}\n")
         for face in faces:
             file.write(f"f {' '.join(map(str, face))}\n")
+
+def serialize_keypoints(keypoints: tuple) -> list:
+    """
+        Serialize the keypoints.
+        Input parameters:
+            - keypoints: keypoints to serialize
+        Output:
+            - serialized keypoints
+    """
+    out = []
+    for kp in keypoints:
+        out.append([kp.pt, kp.size, kp.angle, kp.response, kp.octave, kp.class_id])
+    return out
+
+def serialize_matches(matches: list) -> list:
+    """
+        Serialize the matches.
+        Input parameters:
+            - matches: matches to serialize
+        Output:
+            - serialized matches
+    """
+    out = []
+    for match in matches:
+        out.append([match.queryIdx, match.trainIdx, match.imgIdx, match.distance])
+    return out
+
+def deserialize_keypoints(keypoints: list) -> list:
+    """
+        Deserialize the keypoints.
+        Input parameters:
+            - keypoints: keypoints to deserialize
+        Output:
+            - deserialized keypoints
+    """
+    out = []
+    for keypoint in keypoints:
+        out.append(
+            cv2.KeyPoint(x=keypoint[0][0], y=keypoint[0][1], size=keypoint[1], angle=keypoint[2], response=keypoint[3], octave=keypoint[4], class_id=keypoint[5])
+        )
+    return out
+
+def deserialize_matches(matches: list) -> list:
+    """
+        Deserialize the matches.
+        Input parameters:
+            - matches: matches to deserialize
+        Output:
+            - deserialized matches
+    """
+    out = []
+    for match in matches:
+        out.append(
+            cv2.DMatch(queryIdx=match[0], trainIdx=match[1], imgIdx=match[2], distance=match[3])
+        )
+    return out

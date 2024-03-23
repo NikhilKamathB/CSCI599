@@ -2,7 +2,7 @@
 # Data structure for the mesh must be defined in this file.
 ###################################################################################################
 
-import os
+
 import logging
 import numpy as np
 import src.utils.utils as utils

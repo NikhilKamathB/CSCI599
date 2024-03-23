@@ -14,10 +14,6 @@ sys.path.append('..')
 # Import the required modules
 import src
 import trimesh
-from trimesh import graph, grouping
-from trimesh.geometry import faces_to_edges
-import numpy as np
-from itertools import zip_longest
 
 
 def subdivision_loop(mesh, iterations: int = 1, fixed: bool = False, verbose: bool = True, output_dir: str = '../assets/results/assignment1'):
@@ -29,34 +25,6 @@ def subdivision_loop(mesh, iterations: int = 1, fixed: bool = False, verbose: bo
     :param verbose: boolean indicating whether to make verbose
     :param output_dir: path to the output directory in which .obj file will be stored
     :return: mesh after subdivision
-    
-    Overall process:
-    Reference: https://github.com/mikedh/trimesh/blob/main/trimesh/remesh.py#L207
-    1. Calculate odd vertices.
-      Assign a new odd vertex on each edge and
-      calculate the value for the boundary case and the interior case.
-      The value is calculated as follows.
-          v2
-        / f0 \\        0
-      v0--e--v1      /   \\
-        \\f1 /     v0--e--v1
-          v3
-      - interior case : 3:1 ratio of mean(v0,v1) and mean(v2,v3)
-      - boundary case : mean(v0,v1)
-    2. Calculate even vertices.
-      The new even vertices are calculated with the existing
-      vertices and their adjacent vertices.
-        1---2
-       / \\/ \\      0---1
-      0---v---3     / \\/ \\
-       \\ /\\/    b0---v---b1
-        k...4
-      - interior case : (1-kB):B ratio of v and k adjacencies
-      - boundary case : 3:1 ratio of v and mean(b0,b1)
-    3. Compose new faces with new vertices.
-    
-    # The following implementation considers only the interior cases
-    # You should also consider the boundary cases and more iterations in your submission
     """
     new_vertices, new_faces = mesh.loop_subdivision(iterations=iterations, fixed=fixed, verbose=verbose)
     mesh.save(new_vertices, new_faces, os.path.join(output_dir, 'cube_subdivided.obj'))
