@@ -4,11 +4,19 @@
 ### Misc ###
 **submission**
 *.png
+*.jpg
 *.obj
+*.ply
+*.DS_Store
 !assets/plot/**/*.png
 !assets/results/**/*.obj
 !assets/*.obj
 logs/**
+!assets/Benchmarking_Camera_Calibration_2008/**
+!assets/results/assignment2/verbose/**/**_reprojection_error.png
+!assets/results/assignment2/cloudpoints/**
+verbose/**
+*.pkl
 
 ### Python ###
 # Byte-compiled / optimized / DLL files

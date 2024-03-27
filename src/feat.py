@@ -14,12 +14,12 @@ import pickle
 import logging
 from datetime import datetime
 from typing import List, Tuple
-from src.utils.utils import serialize_keypoints, serialize_matches
+from src.utils.utils import CV2Mixin, serialize_keypoints, serialize_matches
 
 logger = logging.getLogger(__name__)
 
 
-class FeatureExtractor:
+class FeatureExtractor(CV2Mixin):
 
     """
         Class to extract features from images.
@@ -35,6 +35,7 @@ class FeatureExtractor:
                  out_dir: str = "../assets",
                  norm_type: int = cv2.NORM_L2,
                  cross_check: bool = True,
+                 folder_suffix: str = datetime.now().strftime('%Y-%m-%d_%H-%M-%S'),
                  verbose: bool = True,
                  verbose_match_percentage: float = 0.25
                 ) -> None:
@@ -48,6 +49,7 @@ class FeatureExtractor:
                 - out_dir: directory to store results/data in
                 - norm_type: norm type to use
                 - cross_check: whether to cross check feature matching or not
+                - folder_suffix: suffix for the output directory
                 - verbose: verbosity
                 - verbose_match_percentage: percentage of matches to display
         """
@@ -57,12 +59,12 @@ class FeatureExtractor:
         self.cross_check = cross_check
         self.verbose = verbose
         self.verbose_match_percentage = verbose_match_percentage
-        datetime_str = datetime.now().strftime('%Y-%m-%d_%H-%M-%S')
-        self.out_feats_dir = os.path.join(out_dir, "feats", f"{datetime_str}")
-        self.out_matches_dir = os.path.join(out_dir, "matches", f"{datetime_str}")
-        self.out_verbose_dir = os.path.join(out_dir, "verbose", f"{datetime_str}")
+        self.out_feats_dir = os.path.join(out_dir, "feats", f"{folder_suffix}")
+        self.out_matches_dir = os.path.join(out_dir, "matches", f"{folder_suffix}")
+        self.out_verbose_dir = os.path.join(out_dir, "verbose", f"{folder_suffix}")
         os.makedirs(self.out_verbose_dir, exist_ok=True)
-        self._initialize_extractor(extractor); self._initialize_matcher(matcher)
+        self._initialize_extractor(extractor)
+        self.matcher = self._initialize_matcher(matcher)
     
     def _initialize_extractor(self, extractor: str = "sift") -> None:
         """
@@ -76,20 +78,6 @@ class FeatureExtractor:
         else:
             logger.error(f"{self.__LOG_PREFIX__}: Invalid feature extractor")
             raise ValueError("Invalid feature extractor")
-    
-    def _initialize_matcher(self, matcher: str = "bfmatcher") -> None:
-        """
-            Initialize the feature matcher.
-            Input parameters:
-                - matcher: feature matcher to use
-        """
-        if matcher == "bfmatcher" or matcher == "BFMatcher" or matcher == "BFMATCHER":
-            self.matcher = cv2.BFMatcher(normType=self.norm_type,
-                crossCheck=self.cross_check)
-            os.makedirs(self.out_matches_dir, exist_ok=True)
-        else:
-            logger.error(f"{self.__LOG_PREFIX__}: Invalid feature matcher")
-            raise ValueError("Invalid feature matcher")
     
     def extract_features(self) -> List:
         """
@@ -117,12 +105,14 @@ class FeatureExtractor:
             logger.info(f"{self.__LOG_PREFIX__}: Features extracted from image {img} - time taken: {time.time() - start_time}s")
         return data
     
-    def match_features(self, data: List) -> None:
+    def match_features(self, data: List) -> List:
         """
             Match features from the data.
             Input parameters:
                 - data: data list containing image path, image name, keypoints, and descriptors
+            Returns: List of tuples containing image names with matching features with the highest number of matches first
         """
+        matches_list, matching_results = [], []
         for i in range(len(data)):
             for j in range(i+1, len(data)):
                 start_time = time.time()
@@ -130,9 +120,9 @@ class FeatureExtractor:
                 img2, image_name2, keypoints2, descriptors2 = data[j]
                 matches = self.matcher.match(descriptors1, descriptors2)
                 matches = sorted(matches, key=lambda x: x.distance)
-                matches_serialized = serialize_matches(matches)
-                with open(os.path.join(self.out_matches_dir, f"matches_{image_name1}_{image_name2}.pkl"), "wb") as f:
-                    pickle.dump(matches_serialized, f)
+                matches_list.append(
+                    (image_name1, image_name2, matches)
+                )
                 if self.verbose:
                     out_img = cv2.drawMatches(
                         cv2.cvtColor(cv2.imread(img1), cv2.COLOR_BGR2GRAY),  
@@ -144,18 +134,26 @@ class FeatureExtractor:
                         flags=cv2.DrawMatchesFlags_NOT_DRAW_SINGLE_POINTS)
                     cv2.imwrite(os.path.join(self.out_verbose_dir, f"verbose_{image_name1}_{image_name2}.jpg"), out_img)
                 logger.info(f"{self.__LOG_PREFIX__}: Features matched between images {img1} and {img2} - time taken: {time.time() - start_time}s")
-
+        matches_list = sorted(matches_list, key=lambda x: len(x[2]), reverse=True)
+        for match in matches_list:
+            matching_results.append(
+                (match[0], match[1])
+            )
+            matches_serialized = serialize_matches(match[2])
+            with open(os.path.join(self.out_matches_dir, f"matches_{match[0]}_{match[1]}.pkl"), "wb") as f:
+                pickle.dump(matches_serialized, f)
+        return matching_results
+            
     def run(self) -> Tuple:
         """
             Run the feature extraction and matching.
-            Returns: Tuple containing the paths to the extracted features and matches, also verbose images
+            Returns: Tuple containing image matches, the paths to the extracted features and matches, also verbose images
         """
         try:
             data = self.extract_features()
-            self.match_features(data)
+            image_matches = self.match_features(data)
             logger.info(f"{self.__LOG_PREFIX__}: Feature extraction and matching complete")
-            return self.out_feats_dir, self.out_matches_dir, self.out_verbose_dir
+            return image_matches, self.out_feats_dir, self.out_matches_dir, self.out_verbose_dir
         except Exception as e:
             logger.error(f"{self.__LOG_PREFIX__}: Error while extracting features")
             raise e
-                

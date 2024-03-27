@@ -4,8 +4,11 @@
 
 import os
 import cv2
+import logging
 import numpy as np
 from typing import Tuple
+
+logger = logging.getLogger(__name__)
 
 
 def str2bool(v) -> bool:
@@ -189,6 +192,65 @@ def deserialize_matches(matches: list) -> list:
     out = []
     for match in matches:
         out.append(
-            cv2.DMatch(queryIdx=match[0], trainIdx=match[1], imgIdx=match[2], distance=match[3])
+            cv2.DMatch(match[0], match[1], match[2], match[3])
         )
     return out
+
+def pts2ply(pts: np.ndarray, colors: np.ndarray, file_name: str = "out.ply") -> bool:
+    """
+    Save the points to a .ply file.
+    Input parameters:
+        - pts: numpy array of points
+        - colors: numpy array of colors
+        - file_name: name of the file
+    Output:
+        - boolean indicating whether the operation was successful
+    """
+    try:
+        with open(file_name,'w') as f: 
+            f.write('ply\n')
+            f.write('format ascii 1.0\n')
+            f.write('element vertex {}\n'.format(pts.shape[0]))
+            f.write('property float x\n')
+            f.write('property float y\n')
+            f.write('property float z\n')
+            f.write('property uchar red\n')
+            f.write('property uchar green\n')
+            f.write('property uchar blue\n')
+            f.write('end_header\n')
+            colors = colors.astype(int)
+            for pt, cl in zip(pts,colors): 
+                f.write('{} {} {} {} {} {}\n'.format(pt[0],pt[1],pt[2],
+                                                    cl[0],cl[1],cl[2]))
+        return True
+    except Exception as e:
+        return False
+    
+
+class CV2Mixin:
+
+    """
+        Mixin class for OpenCV operations.
+    """
+
+    def _initialize_matcher(self, matcher: str = "bfmatcher", make_dir: bool = True, default: bool = False) -> object:
+        """
+            Initialize the feature matcher.
+            Input parameters:
+                - matcher: feature matcher to use
+                - make_dir: boolean indicating whether to make the output directory
+                - default: boolean indicating whether to use the default matcher
+            Returns:
+                - the initialized matcher object
+        """
+        if matcher == "bfmatcher" or matcher == "BFMatcher" or matcher == "BFMATCHER":
+            if default:
+                matcher = cv2.BFMatcher()
+            else:
+                matcher = cv2.BFMatcher(normType=self.norm_type, crossCheck=self.cross_check)
+            if make_dir:
+                os.makedirs(self.out_matches_dir, exist_ok=True)
+            return matcher
+        else:
+            logger.error(f"{self.__LOG_PREFIX__}: Invalid feature matcher")
+            raise ValueError("Invalid feature matcher")
