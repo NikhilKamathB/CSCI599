@@ -5,12 +5,16 @@
 import os
 import cv2
 import time
+import copy
 import pickle
 import logging
 import numpy as np
 import matplotlib.pyplot as plt
+from scipy import stats
 from typing import List
+from scipy import sparse
 from datetime import datetime
+from scipy.optimize import least_squares, OptimizeResult
 from src.utils.utils import CV2Mixin, deserialize_keypoints, deserialize_matches, pts2ply
 
 logger = logging.getLogger(__name__)
@@ -42,6 +46,12 @@ class SFM(CV2Mixin):
                 pnp_method: int = cv2.SOLVEPNP_DLS,
                 pnp_estimation_confidence: float = 0.99,
                 reprojection_threshold: float = 8.0,
+                reprojection_remove_outliers: bool = True,
+                reprojection_remove_outliers_threshold: float = 5.0,
+                perform_bundle_adjustment: bool = False,
+                least_squares_method: str = "trf",
+                cloud_point_cleaning: bool = True,
+                cloud_point_z_threshold: float = 3.0,
                 true_circle_radius: int = 15,
                 true_circle_color: tuple = (0, 255, 0),
                 true_circle_thickness: int = -1,
@@ -71,6 +81,12 @@ class SFM(CV2Mixin):
                 - pnp_method: method to estimate the pose of the camera using PnP algorithm
                 - pnp_estimation_confidence: confidence for pose estimation using PnP algorithm
                 - reprojection_threshold: reprojection threshold for pose estimation
+                - reprojection_remove_outliers: whether to remove outliers post PnP or not
+                - reprojection_remove_outliers_threshold: threshold for removing outliers post PnP
+                - perform_bundle_adjustment: whether to perform bundle adjustment or not
+                - least_squares_method: method to use for least squares optimization
+                - cloud_point_cleaning: whether to clean the cloud points or not before saving
+                - cloud_point_z_threshold: threshold for z-axis of the cloud points
                 - true_circle_radius: radius of the true circle
                 - true_circle_color: color of the true circle
                 - true_circle_thickness: thickness of the true circle
@@ -97,6 +113,12 @@ class SFM(CV2Mixin):
         self.pnp_method = pnp_method
         self.pnp_estimation_confidence = pnp_estimation_confidence
         self.reprojection_threshold = reprojection_threshold
+        self.reprojection_remove_outliers = reprojection_remove_outliers
+        self.reprojection_remove_outliers_threshold = reprojection_remove_outliers_threshold
+        self.perform_bundle_adjustment = perform_bundle_adjustment
+        self.least_squares_method = least_squares_method
+        self.cloud_point_cleaning = cloud_point_cleaning
+        self.cloud_point_z_threshold = cloud_point_z_threshold
         self.true_circle_radius = true_circle_radius
         self.true_circle_color = true_circle_color
         self.true_circle_thickness = true_circle_thickness
@@ -133,33 +155,72 @@ class SFM(CV2Mixin):
             logger.error(f"{self.__LOG_PREFIX__}: Calibration matrix style not implemented")
             raise NotImplementedError("Calibration matrix style not implemented")
     
-    def _load_pickle(self, file_dir: str, file_name: str) -> dict:
+    def _load_pickle(self, file_dir: str, file_name: str, mute: bool = False) -> dict:
         """
             Load the pickle file.
             Input parameters:
                 - file_dir: directory of the file
                 - file_name: name of the file
+                - mute: boolean indicating whether to mute the logs
             Output:
                 - dictionary
         """
-        logger.info(f"{self.__LOG_PREFIX__}: Loading pickle file {file_name}")
+        if not mute:
+            logger.info(f"{self.__LOG_PREFIX__}: Loading pickle file {file_name}")
         with open(os.path.join(file_dir, f"{file_name}.pkl"), 'rb') as file:
             return pickle.load(file)
+    
+    def _load_features_from_file(self, file_name: str, mute: bool = False) -> tuple:
+        """
+            Load the features with keypoints and descriptors.
+            Input parameters:
+                - file_name: name of the file
+                - mute: boolean indicating whether to mute the logs
+            Output:
+                - keypoints: keypoints
+                - descriptors: descriptors
+        """
+        if not mute:
+            logger.info(
+                f"{self.__LOG_PREFIX__}: Loading features for {file_name}")
+        keypoints = self._load_pickle(
+            self.features_dir, f"keypoints_{file_name}", mute=True)
+        descriptors = self._load_pickle(
+            self.features_dir, f"descriptors_{file_name}", mute=True)
+        keypoints = deserialize_keypoints(keypoints)
+        return keypoints, descriptors
     
     def _load_features(self, file_name: str) -> tuple:
         """
             Load the features with keypoints and descriptors.
             Input parameters:
                 - file_name: name of the file
+                - mute: boolean indicating whether to mute the logs
             Output:
                 - keypoints: keypoints
                 - descriptors: descriptors
         """
-        logger.info(f"{self.__LOG_PREFIX__}: Loading features for {file_name}")
-        keypoints = self._load_pickle(self.features_dir, f"keypoints_{file_name}")
-        descriptors = self._load_pickle(self.features_dir, f"descriptors_{file_name}")
-        keypoints = deserialize_keypoints(keypoints)
-        return keypoints, descriptors
+        try:
+            return self.keypoints[file_name], self.descriptors[file_name]
+        except Exception as e:
+            logger.error(f"{self.__LOG_PREFIX__}: Error loading features for {file_name}")
+            raise e
+    
+    def _load_matches_from_file(self, file_name_1: str, file_name_2: str) -> list:
+        """
+            Load the matches.
+            Input:
+                - file_name_1: name of the first image
+                - file_name_2: name of the second image
+            Output:
+                - matches: matches
+        """
+        logger.info(
+            f"{self.__LOG_PREFIX__}: Loading matches for {file_name_1} and {file_name_2}")
+        matches = self._load_pickle(
+            self.matches_dir, f"matches_{file_name_1}_{file_name_2}")
+        matches = deserialize_matches(matches)
+        return matches
     
     def _load_matches(self, file_name_1: str, file_name_2: str) -> list:
         """
@@ -170,10 +231,28 @@ class SFM(CV2Mixin):
             Output:
                 - matches: matches
         """
-        logger.info(f"{self.__LOG_PREFIX__}: Loading matches for {file_name_1} and {file_name_2}")
-        matches = self._load_pickle(self.matches_dir, f"matches_{file_name_1}_{file_name_2}")
-        matches = deserialize_matches(matches)
-        return matches
+        try:
+            return self.matches_data[(file_name_1, file_name_2)]
+        except Exception as e:
+            logger.error(f"{self.__LOG_PREFIX__}: Error loading matches for {file_name_1} and {file_name_2}")
+            raise e
+    
+    def _load_data(self) -> tuple:
+        """
+            Load the data.
+            Output:
+                - a tuple of keypoints, descriptors, and matches
+        """
+        try:
+            keypoints, descriptors, matches = {}, {}, {}
+            for i in range(len(self.image_list)):
+                keypoints[self.image_list[i]], descriptors[self.image_list[i]] = self._load_features_from_file(self.image_list[i])
+                for j in range(i+1, len(self.image_list)):
+                    matches[(self.image_list[i], self.image_list[j])] = self._load_matches_from_file(self.image_list[i], self.image_list[j])
+            return keypoints, descriptors, matches
+        except Exception as e:
+            logger.error(f"{self.__LOG_PREFIX__}: Error loading data")
+            raise e
     
     def _get_image_list(self) -> List[str]:
         """
@@ -328,14 +407,16 @@ class SFM(CV2Mixin):
                 break
         return file_path
 
-    def _get_colors(self) -> np.ndarray:
+    def _get_colors(self, point_cloud: np.ndarray) -> np.ndarray:
         """
             Get the colors.
+            Input parameters:
+                - point_cloud: point cloud
             Output:
                 - numpy array of colors
         """
         logger.info(f"{self.__LOG_PREFIX__}: Getting colors")
-        colors = np.zeros_like(self.point_cloud)
+        colors = np.zeros_like(point_cloud)
         for k in self.image_data.keys():
             _, _, ref = self.image_data[k]
             keypoint, _ = self._load_features(k)
@@ -437,13 +518,29 @@ class SFM(CV2Mixin):
                 # Triangulate the points
                 self._baseline_triangulation(old_view, image)
 
+    def clean_point_clouds(self) -> np.ndarray:
+        """
+            Clean the point clouds.
+            Output:
+                - z_mask: mask representing cleaned point clouds based on z values
+        """
+        logger.info(f"{self.__LOG_PREFIX__}: Cleaning the point clouds")
+        z = np.abs(stats.zscore(self.point_cloud))
+        z_mask = (z < self.cloud_point_z_threshold).all(axis=-1)
+        logger.info(f"{self.__LOG_PREFIX__}: Found {np.sum(~z_mask)} outliers")
+        return z_mask
+    
     def _generate_point_cloud(self, file_name: str = "point_cloud.ply") -> None:
         """
             Generate the point cloud.
         """
         logger.info(f"{self.__LOG_PREFIX__}: Generating the point cloud")
-        colors = self._get_colors()
-        success = pts2ply(self.point_cloud, colors, os.path.join(self.output_dir, file_name))
+        point_cloud = copy.deepcopy(self.point_cloud)
+        if self.cloud_point_cleaning:
+            z_mask = self.clean_point_clouds()
+            point_cloud[z_mask == False] = 0
+        colors = self._get_colors(point_cloud=point_cloud)
+        success = pts2ply(point_cloud, colors, os.path.join(self.output_dir, file_name))
         if success:
             logger.info(f"{self.__LOG_PREFIX__}: Point cloud generated successfully")
         else:
@@ -464,13 +561,22 @@ class SFM(CV2Mixin):
         # Get the 3D points
         points_3d = self.point_cloud[ref[ref >= 0].astype(int)]
         # Project 3D points onto 2D image
-        projected_points = cv2.projectPoints(points_3d, r, t, self.K, None)[0].squeeze()
+        r_vec, _ = cv2.Rodrigues(r)
+        projected_points = cv2.projectPoints(points_3d, r_vec, t, self.K, None)[0].squeeze()
         # Get the true 2D points
         keypoints = np.array(keypoints)[ref >= 0]
         keypoints = np.array([kp.pt for kp in keypoints])
         # Compute the reprojection error mask
-        error = np.mean(np.linalg.norm(keypoints - projected_points, axis=-1))
-        logger.info(f"{self.__LOG_PREFIX__}: Reprojection error for {image}: {error}")
+        error = np.linalg.norm(keypoints - projected_points, axis=-1)
+        # Remove outliers post PnP
+        if self.reprojection_remove_outliers:
+            points_3d, mask = self._remove_outliers(error, self.reprojection_remove_outliers_threshold, points_3d)
+            error = error[mask]
+            self.point_cloud[ref[ref >= 0].astype(int)] = points_3d
+            keypoints = keypoints[mask]
+            projected_points = projected_points[mask]
+        mean_error = np.mean(error)
+        logger.info(f"{self.__LOG_PREFIX__}: Reprojection error for {image}: {mean_error}")
         # Plot the reprojection error
         if self.verbose:
             fig, ax = plt.subplots()
@@ -485,11 +591,124 @@ class SFM(CV2Mixin):
                     int), projected_points[i, 1].astype(int)), self.connecting_line_color, self.connecting_line_thickness)
             image_np = cv2.cvtColor(image_np, cv2.COLOR_BGR2RGB)
             ax.imshow(image_np)
-            ax.set_title(f"Reprojection error for {image} - error: {error}")
+            ax.set_title(
+                f"Reprojection error for {image} - error: {mean_error}")
             fig.savefig(os.path.join(self.out_verbose_dir, f"{image}_reprojection_error.png"))
             plt.close(fig)
-        return error
+        return mean_error
 
+    def _remove_outliers(self, error: np.ndarray, threshold: float, points_3d: np.ndarray) -> tuple:
+        """
+            Remove the outliers.
+            Input parameters:
+                - error: error values
+                - threshold: threshold value
+            Output:
+                - points_3d: 3D points
+                - mask representing the inliers
+        """
+        logger.info(f"{self.__LOG_PREFIX__}: Removing outliers based on threshold: {threshold}")
+        inliers = error < threshold
+        points_3d[~inliers] = 0
+        return points_3d, inliers
+    
+    def bundle_adjustment(self) -> None:
+        """
+            Perform bundle adjustment.
+        """
+
+        def initial_guess() -> tuple:
+            """
+                Compute the initial guess for the camera poses.
+                Returns: tuple containing the rotation and translation matrices
+            """
+            camera_intrinsics = []
+            for _, image in enumerate(self.image_data.keys()):
+                r, t, _ = self.image_data[image]
+                camera_intrinsics.extend(np.hstack((r.ravel(), t.ravel())))
+            points_3d = self.point_cloud.ravel()
+            return np.hstack((np.array(camera_intrinsics), points_3d))
+        
+        def update(result: OptimizeResult) -> None:
+            """
+                Update the camera poses and 3D points.
+                Input parameters:
+                    - result: optimization result
+            """
+            n_views = len(self.image_data)
+            camera_params = result.x[:n_views*12].reshape(-1, 12) # 12 => 3x3 (rotation) + 3x1 (translation)
+            points_3d = result.x[n_views*12:].reshape(-1, 3)
+            for idx, image in enumerate(self.image_data.keys()):
+                r = camera_params[idx, :9].reshape(3, 3)
+                t = camera_params[idx, 9:].reshape(3, 1)
+                self.image_data[image][0] = r
+                self.image_data[image][1] = t
+            if self.point_cloud.shape != points_3d.shape:
+                logger.error(f"{self.__LOG_PREFIX__}: Point cloud shape mismatch")
+                raise ValueError("Point cloud shape mismatch")
+            self.point_cloud = points_3d
+        
+        def get_jac_sparsity() -> np.ndarray:
+            """
+                Get the Jacobian sparsity.
+                Returns: numpy array representing the Jacobian sparsity
+            """
+            n_views = len(self.image_data)
+            n_points_3d = self.point_cloud.shape[0]
+            n_params = n_views*12 + n_points_3d*3 # 12 => 3x3 (rotation) + 3x1 (translation)
+            sparsity = np.zeros((0, n_params))
+            for idx, image in enumerate(self.image_data.keys()):
+                _, _, ref = self.image_data[image]
+                keypoints, _ = self._load_features(image)
+                keypoints = np.array(keypoints)[ref >= 0]
+                sparsity_ = np.zeros((2*len(keypoints), n_params))
+                # Fill camera correspondings
+                sparsity_[:, idx*12:idx*12+12] = 1
+                # Fill 3D points correspondings using references
+                i = np.arange(len(keypoints))
+                sparsity_[2*i, n_views*12 + 3*ref[ref >= 0].astype(int) + 0] = 1
+                sparsity_[2*i+1, n_views*12 + 3*ref[ref >= 0].astype(int) + 0] = 1
+                sparsity_[2*i, n_views*12 + 3*ref[ref >= 0].astype(int) + 1] = 1
+                sparsity_[2*i+1, n_views*12 + 3*ref[ref >= 0].astype(int) + 1] = 1
+                sparsity_[2*i, n_views*12 + 3*ref[ref >= 0].astype(int) + 2] = 1
+                sparsity_[2*i+1, n_views*12 + 3*ref[ref >= 0].astype(int) + 2] = 1
+                # Stack the sparsity
+                sparsity = np.vstack((sparsity, sparsity_))
+            sparsity_lil = sparse.lil_matrix(sparsity, dtype=int)
+            del sparsity
+            return sparsity_lil
+        
+        def F(*args, **kwargs) -> np.ndarray:
+            """
+                Compute the residuals.
+                Returns: numpy residuals
+            """
+            residuals = np.empty((0, 2)) # Pixel coordinates
+            for image in self.image_data.keys():
+                r, t, ref = self.image_data[image]
+                r_vec, _ = cv2.Rodrigues(r)
+                keypoints, _ = self._load_features(image)
+                keypoints = np.array(keypoints)[ref >= 0]
+                keypoints = np.array([kp.pt for kp in keypoints])
+                points_3d = self.point_cloud[ref[ref >= 0].astype(int)]
+                projected_points = cv2.projectPoints(points_3d, r_vec, t, self.K, None)[0].squeeze()
+                # add noise to the projected points
+                projected_points += np.random.normal(0, 100, projected_points.shape)
+                residuals = np.vstack((residuals, keypoints - projected_points))
+            return residuals.flatten()
+
+        opt_start_time = time.time()
+        logger.info(f"{self.__LOG_PREFIX__}: Performing bundle adjustment")
+        logger.info(f"{self.__LOG_PREFIX__}: Getting initial guess and sparse Jacobian")
+        x0 = initial_guess()
+        jac_sparcity = None
+        x_scale = 1.0
+        logger.info(f"{self.__LOG_PREFIX__}: Performing least squares optimization for bundle adjustment with {self.image_data.keys()} views")
+        result = least_squares(F, x0=x0, jac_sparsity=jac_sparcity, method=self.least_squares_method, x_scale=x_scale, verbose=0, args=())
+        logger.info(f"{self.__LOG_PREFIX__}: Updating parameters")
+        update(result)
+        logger.info(f"{self.__LOG_PREFIX__}: Bundle adjustment completed - cost: {result.cost} | time taken: {(time.time() - opt_start_time)/60} minutes")
+    
     def run(self) -> None:
         """
             Run the Structure from Motion algorithm.
@@ -506,6 +725,8 @@ class SFM(CV2Mixin):
         logger.info(f"{self.__LOG_PREFIX__}: Running the Structure from Motion algorithm")
         # Get image/view list
         self.image_list = self._get_image_list()
+        # Load data
+        self.keypoints, self.descriptors, self.matches_data = self._load_data()
         # Perform `baseline pose estimation` for the first two images with the most overlapping features
         if len(self.image_list) < 2:
             logger.error(f"{self.__LOG_PREFIX__}: Not enough image matches to perform SFM")
@@ -514,6 +735,9 @@ class SFM(CV2Mixin):
         self._baseline_pose_estimation(image_1, image_2)
         # Perform `baseline triangulation` for the first two images
         self._baseline_triangulation(image_1, image_2)
+        # Perform bundle adjustment if required
+        if self.perform_bundle_adjustment:
+            self.bundle_adjustment()
         # Generate the point cloud into a file
         self._generate_point_cloud(file_name="cloud_base_view.ply")
         # Compute the reprojection error for the first two images
@@ -528,7 +752,9 @@ class SFM(CV2Mixin):
             self._pose_estimation(img)
             # Perform triangulation for the new image
             self._triangulation(img)
-            print(self.point_cloud.shape, self.point_cloud.max(axis=0), self.point_cloud.min(axis=0))
+            # Perform bundle adjustment if required
+            if self.perform_bundle_adjustment:
+                self.bundle_adjustment()
             # Generate the point cloud into a file
             self._generate_point_cloud(file_name=f"cloud_view_{views_ctr+idx}.ply")
             # Compute the reprojection error for the new image

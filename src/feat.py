@@ -85,8 +85,8 @@ class FeatureExtractor(CV2Mixin):
             Returns: List of tuples containing image path, image name, keypoints, and descriptors
         """
         data = []
+        start_time = time.time()
         for _, img in enumerate(self.images):
-            start_time = time.time()
             image = cv2.imread(img)[:, :, ::-1] # BGR to RGB
             image_name = img.split('/')[-1].split('.')[0]
             keypoints, descriptors = self.extractor.detectAndCompute(image, None) # Second argument is mask - if you want to search only a part of image
@@ -102,7 +102,8 @@ class FeatureExtractor(CV2Mixin):
             data.append(
                 (img, image_name, keypoints, descriptors)
             )
-            logger.info(f"{self.__LOG_PREFIX__}: Features extracted from image {img} - time taken: {time.time() - start_time}s")
+            logger.info(f"{self.__LOG_PREFIX__}: Features extracted from image {img}")
+        logger.info(f"{self.__LOG_PREFIX__}: Feature extraction completed - time taken: {(time.time() - start_time)/60} minutes")
         return data
     
     def match_features(self, data: List) -> List:
@@ -113,9 +114,9 @@ class FeatureExtractor(CV2Mixin):
             Returns: List of tuples containing image names with matching features with the highest number of matches first
         """
         matches_list, matching_results = [], []
+        start_time = time.time()
         for i in range(len(data)):
             for j in range(i+1, len(data)):
-                start_time = time.time()
                 img1, image_name1, keypoints1, descriptors1 = data[i]
                 img2, image_name2, keypoints2, descriptors2 = data[j]
                 matches = self.matcher.match(descriptors1, descriptors2)
@@ -133,7 +134,7 @@ class FeatureExtractor(CV2Mixin):
                         None,
                         flags=cv2.DrawMatchesFlags_NOT_DRAW_SINGLE_POINTS)
                     cv2.imwrite(os.path.join(self.out_verbose_dir, f"verbose_{image_name1}_{image_name2}.jpg"), out_img)
-                logger.info(f"{self.__LOG_PREFIX__}: Features matched between images {img1} and {img2} - time taken: {time.time() - start_time}s")
+                logger.info(f"{self.__LOG_PREFIX__}: Features matched between images {img1} and {img2}")
         matches_list = sorted(matches_list, key=lambda x: len(x[2]), reverse=True)
         for match in matches_list:
             matching_results.append(
@@ -142,6 +143,7 @@ class FeatureExtractor(CV2Mixin):
             matches_serialized = serialize_matches(match[2])
             with open(os.path.join(self.out_matches_dir, f"matches_{match[0]}_{match[1]}.pkl"), "wb") as f:
                 pickle.dump(matches_serialized, f)
+        logger.info(f"{self.__LOG_PREFIX__}: Feature matching completed - time taken: {(time.time() - start_time)/60} minutes")
         return matching_results
             
     def run(self) -> Tuple:
