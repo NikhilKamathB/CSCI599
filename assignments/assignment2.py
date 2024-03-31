@@ -78,7 +78,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description="Implementation of SFM.")
     # Data
     parser.add_argument("-r", "--root_dir", type=str, default="../assets/Benchmarking_Camera_Calibration_2008", help="Path to the root directory containing images")
-    parser.add_argument("-i", "--image_dir", type=str, default="Herz-Jesus-P8/images",
+    parser.add_argument("-i", "--image_dir", type=str, default="fountain-P11/images",
                         help="Path to the directory containing images")
     parser.add_argument("-a", "--all", type=src.str2bool, default='n', help="Whether to run SFM on all images or not")
     parser.add_argument("-ext", "--ext", type=str, default="jpg,png,jpeg", help="Comma separated string of allowed image extensions")
@@ -98,7 +98,7 @@ if __name__ == '__main__':
     parser.add_argument("-rt", "--reprojection_threshold", type=float, default=8.0, help="Reprojection threshold for pose estimation")
     parser.add_argument("-rot", "--reprojection_remove_outliers", type=src.str2bool, default='n', help="Whether to remove outliers based on reprojection error or not")
     parser.add_argument("-rott", "--reprojection_outlier_threshold", type=float, default=50.0, help="Threshold for reprojection error to remove outliers")
-    parser.add_argument("-ba", "--perform_bundle_adjustment", type=src.str2bool, default='y', help="Whether to perform bundle adjustment or not")
+    parser.add_argument("-ba", "--perform_bundle_adjustment", type=src.str2bool, default='n', help="Whether to perform bundle adjustment or not")
     parser.add_argument("-balsm", "--bundle_adjustment_least_squares_method", type=str, default="trf", help="Method to use for bundle adjustment")
     parser.add_argument("-cp", "--clean_cloud_points", type=src.str2bool, default='y', help="Whether to clean up cloud points or not")
     parser.add_argument("-cz", "--cloud_point_z_threshold", type=float, default=3.0, help="Threshold for cloud points based on z score")

@@ -14,6 +14,7 @@ from scipy import stats
 from typing import List
 from scipy import sparse
 from datetime import datetime
+import matplotlib.patches as mpatches
 from scipy.optimize import least_squares, OptimizeResult
 from src.utils.utils import CV2Mixin, deserialize_keypoints, deserialize_matches, pts2ply
 
@@ -52,12 +53,14 @@ class SFM(CV2Mixin):
                 least_squares_method: str = "trf",
                 cloud_point_cleaning: bool = True,
                 cloud_point_z_threshold: float = 3.0,
-                true_circle_radius: int = 15,
+                true_circle_radius: int = 20,
                 true_circle_color: tuple = (0, 255, 0),
                 true_circle_thickness: int = -1,
-                projection_circle_radius: int = 5,
+                true_circle_label: str = "Ground Truth Keypoints",
+                projection_circle_radius: int = 15,
                 projection_circle_color: tuple = (0, 0, 255),
                 projection_circle_thickness: int = -1,
+                projection_circle_label: str = "Projected Keypoints",
                 connecting_line_color: tuple = (0, 255, 255),
                 connecting_line_thickness: int = 2,
                 verbose: bool = True,) -> None:
@@ -90,9 +93,11 @@ class SFM(CV2Mixin):
                 - true_circle_radius: radius of the true circle
                 - true_circle_color: color of the true circle
                 - true_circle_thickness: thickness of the true circle
+                - true_circle_label: label for the true circle
                 - projection_circle_radius: radius of the projection circle
                 - projection_circle_color: color of the projection circle
                 - projection_circle_thickness: thickness of the projection circle
+                - projection_circle_label: label for the projection circle
                 - connecting_line_color: color of the connecting line
                 - connecting_line_thickness: thickness of the connecting line
                 - verbose: verbosity
@@ -122,9 +127,11 @@ class SFM(CV2Mixin):
         self.true_circle_radius = true_circle_radius
         self.true_circle_color = true_circle_color
         self.true_circle_thickness = true_circle_thickness
+        self.true_circle_label = true_circle_label
         self.projection_circle_radius = projection_circle_radius
         self.projection_circle_color = projection_circle_color
         self.projection_circle_thickness = projection_circle_thickness
+        self.projection_circle_label = projection_circle_label
         self.connecting_line_color = connecting_line_color
         self.connecting_line_thickness = connecting_line_thickness
         self.verbose = verbose
@@ -590,9 +597,13 @@ class SFM(CV2Mixin):
                 cv2.line(image_np, (keypoints[i, 0].astype(int), keypoints[i, 1].astype(int)), (projected_points[i, 0].astype(
                     int), projected_points[i, 1].astype(int)), self.connecting_line_color, self.connecting_line_thickness)
             image_np = cv2.cvtColor(image_np, cv2.COLOR_BGR2RGB)
+            true_point_patch = mpatches.Patch(color=tuple(
+                color / 255 for color in self.true_circle_color[::-1]), label=self.true_circle_label)
+            projected_point_patch = mpatches.Patch(color=tuple(
+                color / 255 for color in self.projection_circle_color[::-1]), label=self.projection_circle_label)
+            ax.legend(handles=[true_point_patch, projected_point_patch], loc='upper right')
             ax.imshow(image_np)
-            ax.set_title(
-                f"Reprojection error for {image} - error: {mean_error}")
+            ax.set_title(f"Reprojection error for {image} - error: {mean_error}")
             fig.savefig(os.path.join(self.out_verbose_dir, f"{image}_reprojection_error.png"))
             plt.close(fig)
         return mean_error

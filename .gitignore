@@ -15,6 +15,7 @@ logs/**
 !assets/Benchmarking_Camera_Calibration_2008/**
 !assets/results/assignment2/verbose/**/**_reprojection_error.png
 !assets/results/assignment2/cloudpoints/**
+!assets/results/assignment2/backup/**
 verbose/**
 *.pkl
 
