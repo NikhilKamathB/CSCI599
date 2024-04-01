@@ -1,0 +1,383 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8">
+    <title>assignment2</title>
+    <style>
+        body {
+            margin: 0;
+        }
+    </style>
+    <script type="importmap">
+        {
+          "imports": {
+            "three": "https://unpkg.com/three@0.147.0/build/three.module.js",
+            "three/addons/": "https://unpkg.com/three@0.147.0/examples/jsm/"
+          }
+        }
+    </script>
+</head>
+
+<body>
+    <h1 style="text-align: center; margin-bottom: 5rem;">Assignment 2</h1>
+
+    <div style="margin-left: 3rem; margin-right: 3rem; text-align: justify;">
+
+        <hr>
+
+        <p>This is CSCI 599 wiki, an alternative to the writeup required by the course work. You may find the
+            deliverables for
+            each assignment within this wiki.</p>
+
+        <p>The repository has the following folder structure:</p>
+
+        <pre>
+                |- assets (holds all kind of unstructured files such as images, 3D objects files, etc)
+                |- result (resultant of every assignment goes here)
+                    |- assignment1 (holds resultant of assignment 1)
+                    |- assignment2 (holds resultant of assignment 2)
+                |- assignments (this contains the csci 599 assignments/questions)
+                |- html (given script - for visualization)
+                |- js (given script - html subordinates)
+                |- src (driver folder that contains all the necessary code to complete the tasks/assignments)
+                    |- base (a base folder that defines any foundational entities such as the core data structures, pre-hooks, post-hooks, etc)
+                    |- utils (supporting executables goes here)
+                    |- remesh.py (driver code for implementing loop subdivision and decimation - assignment 1)
+                    |- sfm.py (driver code for implementing structure from motion - assignment 2)
+                    |- feats.py (driver code for implementing feature extraction and matching - assignment 2)
+                |- index.html (given script - link to assignments)
+                |- requirements.txt (contains all the dependencies)
+                |- README.md
+		</pre>
+
+        <hr>
+
+        <p>In this assignment, we have implemented Structure From Motion (SFM) - a technique used to reconstruct the 3D
+            structure of a scene from a sequence of 2D images or video frames. Before proceeding, please refer to the <a
+                href="https://github.com/NikhilKamathB/CSCI599/wiki">Home</a> page to understand the organization of folders in
+            this repository. Also, ensure all necessary libraries from the <a
+                href="https://github.com/NikhilKamathB/CSCI599/blob/main/requirements.txt">requirements.txt</a> file have been
+            installed.</p>
+
+        <hr>
+
+        <h3>How do we run the project?</h3>
+
+        <p>To get 'assignment 2' running, simply <code>cd</code> into <code>./assignments</code> folder and run
+            <code>python assignment2.py</code>. To get to know the usage of this script, run
+            <code>python assignment2.py -h</code>. Upon successful execution, you can find the results in
+            <code>./assets/results/assignment2</code> folder (default). This folder must contain <code>cloudpoints</code>,
+            <code>feats</code>, <code>matches</code>, and <code>verbose</code> folders if the script configurations are left to
+            its default state. The <code>cloudpoints</code> contains the 3D cloud points generated over the Incremental SFM
+            implementation. The <code>feats</code> and <code>matches</code> folder contains information about the extracted
+            features, descriptors, and matches between any two given views. The <code>verbose</code> folder contains all the
+            visualizations.</p>
+
+        <hr>
+
+        <h3>Incremental Structure From Motion</h3>
+
+        <p>The implementation of Incremental SFM is based on the following pseudocode. In-depth explanation has been done in the code via comments and hints:</p>
+
+        <pre><code>Algorithm:
+
+        procedure extract_feats(image_list &lt;- list of images)
+            for i from 0...length(image_list):
+                feats &lt;- extract features from image image_list[i]
+                descs &lt;- extract descriptors from image image_list[i]
+                for j in i...length(image_list):
+                    matches &lt;- extract matches between images image_list[i] and image_list[j]
+            write feats, descs, and matches into a file after sorting them
+
+        procedure sfm()
+            1. feats, descs, matches &lt; read features, descriptors and matches from the file, in sorted fashion
+            2. Perform baseline pose estimation for the first two images
+            3. Perform baseline triangulation for the first two images
+            4. Perform baseline bundle adjustment if needed
+            5. Compute baseline re-projection error
+            6. Generate baseline point clouds
+            7. For all other unprocessed views, repeat
+                a. Estimate pose of the camera corresponding to the new view
+                b. Triangulate to get 3D points
+                c. Run bundle adjustment if needed
+                d. Compute re-projection error
+                e. Generate new point clouds
+		</code></pre>
+
+        <p><strong>More about the implementation</strong> - For implementing the SFM, we use the data from <a href="https://github.com/openMVG/SfM_quality_evaluation">here</a>. We
+        start with first extracting features from different images/views. This is done by using the OpenCV library. We extract
+        the SIFT (default) features and using their associated descriptors we identify the matches/correspondences between any
+        two views. This serves as a base upon which we build our SFM module. In the SFM module, we select a view and fix it as a
+        reference. Hereafter, this fixed reference position will be used to estimate other camera poses and 3D points. With
+        this, we first estimate our initial base poses for the two views. Once we get the camera poses, we use triangulation to
+        get the 3D points of a feature present in these two views. We repeat this pose estimation and triangulation
+        incrementally to generate a denser cloud of points. The workflow can be viewed <a
+            href="https://github.com/NikhilKamathB/CSCI599/blob/main/src/sfm.py">here</a> and is self-explanatory.</p>
+        <hr>
+
+        <p>The following images are the results of running SFM on the <code>fountain-P11</code> dataset. The mean re-projection error on this
+        dataset was 4.727914267348234. On the left you have the plots for features and re-projection of the same features from
+        the 3D space. On the right, we have the resulting point clouds after processing <code>k</code> views.</p>
+
+        <table style="text-align: center; margin: auto">
+            <tr>
+                <td>Baseline - Image 0 - Re-projection</td>
+                <td>Baseline - View 0 and 1 - Cloud Points</td>
+            </tr>
+            <tr>
+                <td><img src="https://github.com/NikhilKamathB/CSCI599/blob/main/assets/results/assignment2/backup/0000_reprojection_error.png?raw=true"
+                        style="max-width: 40vw; height: auto;">
+                </td>
+                <td><img src="https://github.com/NikhilKamathB/CSCI599/blob/main/assets/results/assignment2/backup/cp_ss_base.png?raw=true"
+                        style="max-width: 27vw; height: auto;">
+                </td>
+            </tr>
+            <tr>
+                <td>Baseline - Image 1 - Re-projection</td>
+                <td>Baseline - View 0 and 1 - Cloud Points</td>
+            </tr>
+            <tr>
+                <td><img src="https://github.com/NikhilKamathB/CSCI599/blob/main/assets/results/assignment2/backup/0001_reprojection_error.png?raw=true"
+                        style="max-width: 40vw; height: auto;">
+                </td>
+                <td><img src="https://github.com/NikhilKamathB/CSCI599/blob/main/assets/results/assignment2/backup/cp_ss_base.png?raw=true"
+                        style="max-width: 27vw; height: auto;">
+                </td>
+            </tr>
+            <tr>
+                <td>Image 2 - Re-projection</td>
+                <td>View 2 - Cloud Points</td>
+            </tr>
+            <tr>
+                <td><img src="https://github.com/NikhilKamathB/CSCI599/blob/main/assets/results/assignment2/backup/0002_reprojection_error.png?raw=true"
+                        style="max-width: 40vw; height: auto;">
+                </td>
+                <td><img src="https://github.com/NikhilKamathB/CSCI599/blob/main/assets/results/assignment2/backup/cp_ss_2.png?raw=true"
+                        style="max-width: 27vw; height: auto;">
+                </td>
+            </tr>
+            <tr>
+                <td>Image 3 - Re-projection</td>
+                <td>View 3 - Cloud Points</td>
+            </tr>
+            <tr>
+                <td><img src="https://github.com/NikhilKamathB/CSCI599/blob/main/assets/results/assignment2/backup/0003_reprojection_error.png?raw=true"
+                        style="max-width: 40vw; height: auto;">
+                </td>
+                <td><img src="https://github.com/NikhilKamathB/CSCI599/blob/main/assets/results/assignment2/backup/cp_ss_3.png?raw=true"
+                        style="max-width: 27vw; height: auto;">
+                </td>
+            </tr>
+            <tr>
+                <td>Image 4 - Re-projection</td>
+                <td>View 4 - Cloud Points</td>
+            </tr>
+            <tr>
+                <td><img src="https://github.com/NikhilKamathB/CSCI599/blob/main/assets/results/assignment2/backup/0004_reprojection_error.png?raw=true"
+                        style="max-width: 40vw; height: auto;">
+                </td>
+                <td><img src="https://github.com/NikhilKamathB/CSCI599/blob/main/assets/results/assignment2/backup/cp_ss_4.png?raw=true"
+                        style="max-width: 27vw; height: auto;">
+                </td>
+            </tr>
+            <tr>
+                <td>Image 5 - Re-projection</td>
+                <td>View 5 - Cloud Points</td>
+            </tr>
+            <tr>
+                <td><img src="https://github.com/NikhilKamathB/CSCI599/blob/main/assets/results/assignment2/backup/0005_reprojection_error.png?raw=true"
+                        style="max-width: 40vw; height: auto;">
+                </td>
+                <td><img src="https://github.com/NikhilKamathB/CSCI599/blob/main/assets/results/assignment2/backup/cp_ss_5.png?raw=true"
+                        style="max-width: 27vw; height: auto;">
+                </td>
+            </tr>
+            <tr>
+                <td>Image 6 - Re-projection</td>
+                <td>View 6 - Cloud Points</td>
+            </tr>
+            <tr>
+                <td><img src="https://github.com/NikhilKamathB/CSCI599/blob/main/assets/results/assignment2/backup/0006_reprojection_error.png?raw=true"
+                        style="max-width: 40vw; height: auto;">
+                </td>
+                <td><img src="https://github.com/NikhilKamathB/CSCI599/blob/main/assets/results/assignment2/backup/cp_ss_6.png?raw=true"
+                        style="max-width: 27vw; height: auto;">
+                </td>
+            </tr>
+            <tr>
+                <td>Image 7 - Re-projection</td>
+                <td>View 7 - Cloud Points</td>
+            </tr>
+            <tr>
+                <td><img src="https://github.com/NikhilKamathB/CSCI599/blob/main/assets/results/assignment2/backup/0007_reprojection_error.png?raw=true"
+                        style="max-width: 40vw; height: auto;">
+                </td>
+                <td><img src="https://github.com/NikhilKamathB/CSCI599/blob/main/assets/results/assignment2/backup/cp_ss_7.png?raw=true"
+                        style="max-width: 27vw; height: auto;">
+                </td>
+            </tr>
+            <tr>
+                <td>Image 8 - Re-projection</td>
+                <td>View 8 - Cloud Points</td>
+            </tr>
+            <tr>
+                <td><img src="https://github.com/NikhilKamathB/CSCI599/blob/main/assets/results/assignment2/backup/0008_reprojection_error.png?raw=true"
+                        style="max-width: 40vw; height: auto;">
+                </td>
+                <td><img src="https://github.com/NikhilKamathB/CSCI599/blob/main/assets/results/assignment2/backup/cp_ss_8.png?raw=true"
+                        style="max-width: 27vw; height: auto;">
+                </td>
+            </tr>
+            <tr>
+                <td>Image 9 - Re-projection</td>
+                <td>View 9 - Cloud Points</td>
+            </tr>
+            <tr>
+                <td><img src="https://github.com/NikhilKamathB/CSCI599/blob/main/assets/results/assignment2/backup/0009_reprojection_error.png?raw=true"
+                        style="max-width: 40vw; height: auto;">
+                </td>
+                <td><img src="https://github.com/NikhilKamathB/CSCI599/blob/main/assets/results/assignment2/backup/cp_ss_9.png?raw=true"
+                        style="max-width: 27vw; height: auto;">
+                </td>
+            </tr>
+            <tr>
+                <td>Image 10 - Re-projection</td>
+                <td>View 10 - Cloud Points</td>
+            </tr>
+            <tr>
+                <td><img src="https://github.com/NikhilKamathB/CSCI599/blob/main/assets/results/assignment2/backup/0010_reprojection_error.png?raw=true"
+                        style="max-width: 40vw; height: auto;">
+                </td>
+                <td><img src="https://github.com/NikhilKamathB/CSCI599/blob/main/assets/results/assignment2/backup/cp_ss_10.png?raw=true"
+                        style="max-width: 27vw; height: auto;">
+                </td>
+            </tr>
+        </table>
+        
+        <p>Now that we have our results, let us compare it with the output from the COLMAP package. On the left you have the output
+        from our SFM implementation and on the right we have the output from COLMAP. We observe that the COLMAP performs much
+        better and deliver a better result. It is observed that, COLMAP handles outliers very well and because of this reason,
+        we don't find much noise in the <code>.ply</code> file. Also, I believe that COLMAP uses some better/efficient way of extracting
+        and matching features as they were relatively faster than our approach. It also does a very good job at dense point
+        cloud estimation. You can find the <code>.ply</code> file for our implementation <a href="https://github.com/NikhilKamathB/CSCI599/blob/main/assets/results/assignment2/backup/sfm_output.ply">here</a>
+        [here]() and the COLMAP <a href="https://github.com/NikhilKamathB/CSCI599/blob/main/assets/results/assignment2/backup/colmap_output.ply">here</a>.
+        For interactive visualization please refer the `html` files in the `writeup` directory.</p>
+
+        <table style="text-align: center; margin: auto">
+            <tr>
+                <td>Our SFM implementation output</td>
+                <td>COLMAP output</td>
+            </tr>
+            <tr>
+                <td><img src="https://github.com/NikhilKamathB/CSCI599/blob/main/assets/results/assignment2/backup/sfm_ss.png?raw=true"
+                        style="max-width: 40vw; height: auto;">
+                </td>
+                <td><img src="https://github.com/NikhilKamathB/CSCI599/blob/main/assets/results/assignment2/backup/colmap_ss.png?raw=true"
+                        style="max-width: 40vw; height: auto;">
+                </td>
+            </tr>
+        </table>
+
+        <hr>
+
+        <p>After applying Structure From Motion (Incremental SFM) we get the following <code>.ply</code> file:</p>
+        <div id="container1"></div>
+        <br>
+        <hr>
+        <p>The following is the result form COLMAP:</p>
+        <div id="container2"></div>
+        <br>
+        <hr>
+
+        <p>Similarly, on the dataset <code>Herz-Jesus-P8</code>, we get the following output with a mean re-projection error = 5.476112677323648:</p>
+        <table style="text-align: center; margin: auto">
+            <tr>
+                <th>Image 1 - Re-projection</th>
+                <th>Image 2 - Re-projection</th>
+                <th>Image 3 - Re-projection</th>
+                <th>Image 4 - Re-projection</th>
+            </tr>
+            <tr>
+                <td><img src="https://github.com/NikhilKamathB/CSCI599/blob/main/assets/results/assignment2/backup/0000_reprojection_error_hj.png?raw=true"
+                        style="max-width: 350px; height: auto;"></td>
+                <td><img src="https://github.com/NikhilKamathB/CSCI599/blob/main/assets/results/assignment2/backup/0001_reprojection_error_hj.png?raw=true"
+                        style="max-width: 350px; height: auto;"></td>
+                <td><img src="https://github.com/NikhilKamathB/CSCI599/blob/main/assets/results/assignment2/backup/0002_reprojection_error_hj.png?raw=true"
+                        style="max-width: 350px; height: auto;"></td>
+                <td><img src="https://github.com/NikhilKamathB/CSCI599/blob/main/assets/results/assignment2/backup/0003_reprojection_error_hj.png?raw=true"
+                        style="max-width: 350px; height: auto;"></td>
+            </tr>
+            <tr>
+                <th>Image 5 - Re-projection</th>
+                <th>Image 6 - Re-projection</th>
+                <th>Image 7 - Re-projection</th>
+                <th>Image 8 - Re-projection</th>
+            </tr>
+            <tr>
+                <td><img src="https://github.com/NikhilKamathB/CSCI599/blob/main/assets/results/assignment2/backup/0004_reprojection_error_hj.png?raw=true"
+                        style="max-width: 350px; height: auto;"></td>
+                <td><img src="https://github.com/NikhilKamathB/CSCI599/blob/main/assets/results/assignment2/backup/0005_reprojection_error_hj.png?raw=true"
+                        style="max-width: 350px; height: auto;"></td>
+                <td><img src="https://github.com/NikhilKamathB/CSCI599/blob/main/assets/results/assignment2/backup/0006_reprojection_error_hj.png?raw=true"
+                        style="max-width: 350px; height: auto;"></td>
+                <td><img src="https://github.com/NikhilKamathB/CSCI599/blob/main/assets/results/assignment2/backup/0007_reprojection_error_hj.png?raw=true"
+                        style="max-width: 350px; height: auto;"></td>
+            </tr>
+        </table>
+
+        <hr>
+
+        <h3>Extra Credits</h3>
+
+        <ol>
+            <li>Present results with your own captured data:
+                <p>The following are pictures of my workspace. I have shown only three images here as a single image has a significant
+                    size. I used ten images to get the 3D points of my workspace. The following are the images. Below this, we have the
+                    screenshot of the 3D points generated in MeshLab.</p>
+                    <table style="text-align: center; margin: auto">
+                        <tr>
+                            <th>Image 1</th>
+                            <th>Image 2</th>
+                            <th>Image 3</th>
+                        </tr>
+                        <tr>
+                            <td><img src="https://github.com/NikhilKamathB/CSCI599/blob/main/assets/results/assignment2/backup/ec_1.JPG?raw=true"
+                                    width="400"></td>
+                            <td><img src="https://github.com/NikhilKamathB/CSCI599/blob/main/assets/results/assignment2/backup/ec_2.JPG?raw=true"
+                                    width="400"></td>
+                            <td><img src="https://github.com/NikhilKamathB/CSCI599/blob/main/assets/results/assignment2/backup/ec_3.JPG?raw=true"
+                                    width="400"></td>
+                        </tr>
+                    </table>
+                    <table style="text-align: center; margin: auto">
+                        <tr>
+                            <th>3D Points in MeshLab - Screenshot</th>
+                        </tr>
+                        <tr>
+                            <td><img src="https://github.com/NikhilKamathB/CSCI599/blob/main/assets/results/assignment2/backup/ec_ss.png?raw=true"
+                                width="500"></td>
+                        </tr>
+                    </table>
+                    <p>The following is the result for above in 3D space:</p>
+                    <div id="container3"></div>
+            </li>
+
+            <li>Implement Bundle Adjustment in incremental SFM:
+                <p>The implementation of Bundle Adjustment can be found <a
+                        href="https://github.com/NikhilKamathB/CSCI599/blob/91d7d4510488c57c0a2f97e604315f71fc878712/src/sfm.py#L631">here
+                        at this permalink</a>. Run <code>python assignment2.py --help</code> to get to know about how to use
+                    this module. The process involves first defining the initial guess. In our case, we set them to our
+                    estimates. We then use this estimate as the starting point and minimize the re-projection error. We also
+                    introduce the creation of sparse Jacobians to expedite the optimization process (trade-off being - more
+                    memory usage based on our implementation). Regardless, for our dataset (fountain-P11), we don't see much
+                    impact from the bundle adjustment module. However, more inspection is needed when it comes to the number of
+                    variables, data points, and error-surface generated. One can check for the correctness of bundle adjustment
+                    by visiting the aforementioned permalink.</p>
+            </li>
+        </ol>
+    </div>
+    <script type="module" src="assignment2.js"></script>
+</body>
+
+</html>

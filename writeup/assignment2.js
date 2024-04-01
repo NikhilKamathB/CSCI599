@@ -39,6 +39,25 @@ let stats2 = new Stats();
 let gui2 = new GUI();
 let isInitialized2 = false;
 
+
+// Container3
+const container3 = document.getElementById('container3');
+container3.style.position = 'relative';
+
+// Initialize the renderer3, scene3, and camera3
+let renderer3 = new THREE.WebGLRenderer();
+let scene3 = new THREE.Scene();
+let camera3 = new THREE.PerspectiveCamera(30, window.innerWidth / (window.innerHeight * 0.5), 0.1, 1000);
+
+// Initialize controls1 here to avoid duplicates
+let controls3 = new OrbitControls(camera3, renderer3.domElement);
+
+// Initialize stats3, gui3, and set isInitialized3 flag
+let stats3 = new Stats();
+let gui3 = new GUI();
+let isInitialized3 = false;
+
+
 function initScene(container, renderer, scene, camera, controls) {
 	scene.background = new THREE.Color(0xffffff);
 	renderer.setSize(window.innerWidth, window.innerHeight * 0.5);
@@ -79,6 +98,9 @@ function loadObject(scene, objectName, objectPath, container) {
 			} else if (container === container2 && !isInitialized2) {
 				initGUI(container2, gui2, scene, points);
 				isInitialized2 = true;
+			} else if (container === container3 && !isInitialized3) {
+				initGUI(container3, gui3, scene, points);
+				isInitialized3 = true;
 			}
 		},
 		function (xhr) {
@@ -129,7 +151,8 @@ function onWindowResize(camera, renderer) {
 
 window.addEventListener('resize', () => {
 	onWindowResize(camera1, renderer1);
-	onWindowResize(camera2, renderer2)
+	onWindowResize(camera2, renderer2);
+	onWindowResize(camera3, renderer3);
 }, false);
 
 // Initialize the scene, stats, and start the animation loop - container 1
@@ -143,3 +166,9 @@ initScene(container2, renderer2, scene2, camera2, controls2);
 initSTATS(container2, stats2);
 loadObject(scene2, "ply2", "../assets/results/assignment2/backup/colmap_output.ply", container2);
 animate(renderer2, scene2, camera2, stats2);
+
+// Initialize the scene, stats, and start the animation loop - container 3
+initScene(container3, renderer3, scene3, camera3, controls3);
+initSTATS(container3, stats3);
+loadObject(scene3, "ply3", "../assets/results/assignment2/backup/ec_output.ply", container3);
+animate(renderer3, scene3, camera3, stats3);
