@@ -81,7 +81,7 @@ if __name__ == '__main__':
     parser.add_argument("-i", "--image_dir", type=str, default="fountain-P11/images",
                         help="Path to the directory containing images")
     parser.add_argument("-a", "--all", type=src.str2bool, default='n', help="Whether to run SFM on all images or not")
-    parser.add_argument("-ext", "--ext", type=str, default="jpg,png,jpeg", help="Comma separated string of allowed image extensions")
+    parser.add_argument("-ext", "--ext", type=str, default="jpg,png,jpeg,JPEG,PNG,JPG", help="Comma separated string of allowed image extensions")
     parser.add_argument("-o", "--out_dir", type=str, default="../assets/results/assignment2", help="Directory to store results in")
     # Feature extraction
     parser.add_argument("-e", "--extractor", type=str, default="SIFT", help="Feature extractor to use")

@@ -158,6 +158,11 @@ class SFM(CV2Mixin):
             self.K = np.array([[3.97*320, 0, 320],
                                [0, 3.97*320, 240],
                                [0, 0, 1]])
+        elif self.calibration_matrix_style == "iphone_13_pro_max" or self.calibration_matrix_style == "IPHONE_13_PRO_MAX" or self.calibration_matrix_style == "iPhone 13 Pro Max":
+            # Computed using iphone JPEG headers and manufacturer's specifications - not accurate
+            self.K = np.array([[2674.29, 0, 2016],
+                                 [0, 2005.71, 1512],
+                                 [0, 0, 1]])
         else:
             logger.error(f"{self.__LOG_PREFIX__}: Calibration matrix style not implemented")
             raise NotImplementedError("Calibration matrix style not implemented")
@@ -712,8 +717,8 @@ class SFM(CV2Mixin):
         logger.info(f"{self.__LOG_PREFIX__}: Performing bundle adjustment")
         logger.info(f"{self.__LOG_PREFIX__}: Getting initial guess and sparse Jacobian")
         x0 = initial_guess()
-        jac_sparcity = None
-        x_scale = 1.0
+        jac_sparcity = get_jac_sparsity()
+        x_scale = "jac"
         logger.info(f"{self.__LOG_PREFIX__}: Performing least squares optimization for bundle adjustment with {self.image_data.keys()} views")
         result = least_squares(F, x0=x0, jac_sparsity=jac_sparcity, method=self.least_squares_method, x_scale=x_scale, verbose=0, args=())
         logger.info(f"{self.__LOG_PREFIX__}: Updating parameters")
