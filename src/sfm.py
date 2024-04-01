@@ -708,8 +708,6 @@ class SFM(CV2Mixin):
                 keypoints = np.array([kp.pt for kp in keypoints])
                 points_3d = self.point_cloud[ref[ref >= 0].astype(int)]
                 projected_points = cv2.projectPoints(points_3d, r_vec, t, self.K, None)[0].squeeze()
-                # add noise to the projected points
-                projected_points += np.random.normal(0, 100, projected_points.shape)
                 residuals = np.vstack((residuals, keypoints - projected_points))
             return residuals.flatten()
 
@@ -717,8 +715,8 @@ class SFM(CV2Mixin):
         logger.info(f"{self.__LOG_PREFIX__}: Performing bundle adjustment")
         logger.info(f"{self.__LOG_PREFIX__}: Getting initial guess and sparse Jacobian")
         x0 = initial_guess()
-        jac_sparcity = get_jac_sparsity()
-        x_scale = "jac"
+        jac_sparcity = None # get_jac_sparsity()
+        x_scale = 1.0 # 'jac' scaling factor
         logger.info(f"{self.__LOG_PREFIX__}: Performing least squares optimization for bundle adjustment with {self.image_data.keys()} views")
         result = least_squares(F, x0=x0, jac_sparsity=jac_sparcity, method=self.least_squares_method, x_scale=x_scale, verbose=0, args=())
         logger.info(f"{self.__LOG_PREFIX__}: Updating parameters")
