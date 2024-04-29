@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8">
+    <title>assignment3</title>
+    <style>
+        body {
+            margin: 0;
+        }
+    </style>
+    <script type="importmap">
+        {
+          "imports": {
+            "three": "https://unpkg.com/three@0.147.0/build/three.module.js",
+            "three/addons/": "https://unpkg.com/three@0.147.0/examples/jsm/"
+          }
+        }
+    </script>
+</head>
+
+<body>
+    <h1 style="text-align: center; margin-bottom: 5rem;">Assignment 3</h1>
+
+    <div style="margin-left: 3rem; margin-right: 3rem; text-align: justify;">
+
+        <hr>
+
+        <p>This is CSCI 599 wiki, an alternative to the writeup required by the course work. You may find the
+            deliverables for
+            each assignment within this wiki.</p>
+
+        <p>The repository has the following folder structure:</p>
+
+        <pre>
+                |- assets (holds all kind of unstructured files such as images, 3D objects files, etc)
+                |- result (resultant of every assignment goes here)
+                    |- assignment1 (holds resultant of assignment 1)
+                    |- assignment2 (holds resultant of assignment 2)
+                |- assignments (this contains the csci 599 assignments/questions)
+                |- colab (this contains assignment 3 - NerfStudio.ipynb)
+                |- html (given script - for visualization)
+                |- js (given script - html subordinates)
+                |- src (driver folder that contains all the necessary code to complete the tasks/assignments)
+                    |- base (a base folder that defines any foundational entities such as the core data structures, pre-hooks, post-hooks, etc)
+                    |- utils (supporting executables goes here)
+                    |- remesh.py (driver code for implementing loop subdivision and decimation - assignment 1)
+                    |- sfm.py (driver code for implementing structure from motion - assignment 2)
+                    |- feats.py (driver code for implementing feature extraction and matching - assignment 2)
+                |- index.html (given script - link to assignments)
+                |- requirements.txt (contains all the dependencies)
+                |- README.md
+		</pre>
+
+        <hr>
+
+        <p>In this assignment, we have trained NeRF and 3DGS model using our data. We achieve this by making use of <a
+                href="https://github.com/nerfstudio-project/nerfstudio">nerfstudio</a>. Before going ahead, kindly have a look
+            at the <a href="https://github.com/NikhilKamathB/CSCI599/wiki">Home</a> page to understand how the folders in this
+            repository have been organized. For this assignment, we use the Google Colab notebook provided by
+            <strong>nerfstudio</strong>. This notebook can be found <a
+                href="https://github.com/NikhilKamathB/CSCI599/blob/main/colab/NerfStudio.ipynb">here</a>. If you are running
+            this, make sure to run this on google colab.</p>
+
+        <hr>
+
+        <h3>How do we run the project?</h3>
+
+        <p>To get 'assignment 3' running simply <code>cd</code> into <code>./colab</code>. You will find <code>NerfStudio.ipynb</code> notebook. Upload this
+        notebook to Google Colab. Note - Watch out for comments in the code cells! For more information, you may refer to the <a href="https://github.com/nerfstudio-project/nerfstudio">nerfstudio repository</a>.
+        </p>
+
+        <h5>Steps involved in running the project.</h5>
+        <pre><code>
+        1. Upload the video to your drive.
+        2. Mount the drive in colab.
+        3. Install all the necessary dependencies.
+        4. Generate data (images, SFM outputs using COLMAP) from the video.
+        5. Train your model using NeRF or 3DGS.
+        6. Visualize the results.
+        7. Render the results as a video.
+        8. Export the point-clouds/splats from the output.
+        </code></pre>
+        <p>All these steps are there in the colab, the only thing that we have to do is run the code cells.</p>
+
+        <hr>
+
+        <h3>NeRF</h3>
+
+        <p>Neural Radiance Fields (NeRF) synthesizes highly realistic scenes from a collection of 2D images. NeRF captures the
+        complex interactions of light with objects in a scene to reconstruct a full three-dimensional representation. The core
+        idea behind NeRF is to represent a scene using a continuous volumetric scene function. This function maps every point in
+        3D space, characterized by its position <code>(x, y, z)</code> and viewing direction <code>(θ, φ)</code>, to a color and a volume density. The
+        model learns this mapping through a deep neural network that is trained on numerous images of a scene from various
+        angles and under different lighting conditions. NeRF operates by casting rays through the scene (much like the way
+        cameras capture light) and uses the volume rendering technique to simulate how light accumulates along these rays. When
+        a ray passes through the scene, it samples points, and the neural network predicts the color and density at each point.
+        The color values are then composited back along the ray to produce a pixel in an image. This technique allows NeRF to
+        produce novel views of a scene with compelling detail and realism, including subtle effects like shadows, reflections,
+        and transparency. It requires significant computational resources but offers a potent tool for applications in virtual
+        reality, visual effects, and digital preservation, where photorealistic rendering is crucial.</p>
+
+        <p>The following is the result of training NeRF on <strong>dozer</strong> data set.</p>
+        <div style="margin: auto;">
+            <video controls autoplay loop muted style="width: 100%;">
+                <source src="../assets/results/assignment3/dozer.mp4" type="video/mp4">
+            </video>
+        </div>
+
+        <p>The following is the result of training NeRF on our <strong>custom dataset</strong></p>
+        <div style="margin: auto;">
+            <video controls autoplay loop muted style="width: 100%;">
+                <source src="../assets/results/assignment3/nerf.mp4" type="video/mp4">
+            </video>
+        </div>
+
+        <hr>
+        
+        <h3>NeRF and COLMAP</h3>
+
+        <p>The COLMAP structure-from-motion package helps us estimate camera poses, intrinsics, and bounds for real data. Using
+        this, we can reconstruct the 3D scene. This said, let us now compare the point clouds generated by NeRF and COLMAP on
+        our custom data.</p>
+
+        <table style="text-align: center; margin: auto">
+            <tr>
+                <td>SS of NeRF PCD on our custom data</td>
+                <td>SS of COLMAP PCD on our custom data</td>
+            </tr>
+            <tr>
+                <td><img src="https://github.com/NikhilKamathB/CSCI599/blob/main/assets/results/assignment3/pcd_nerf.png?raw=true"
+                        style="max-width: 40vw; height: auto;">
+                </td>
+                <td><img src="https://github.com/NikhilKamathB/CSCI599/blob/main/assets/results/assignment3/pcd_colmap.png?raw=true"
+                        style="max-width: 40vw; height: auto;">
+                </td>
+            </tr>
+        </table>
+        
+        <h4>Here is the Point Cloud Visualization for NeRF</h4>
+        <div id="container1"></div>
+
+        <h4>Here is the Point Cloud Visualization for COLMAP</h4>
+        <div id="container2"></div>
+
+        <hr>
+
+        <h3>Results</h3>
+        <p>All results can be found <a
+                href="https://github.com/NikhilKamathB/CSCI599/tree/main/assets/results/assignment3">here</a>. Here is an
+            overview of the files present in the folder.</p>
+        <ul>
+            <li><a href="https://github.com/NikhilKamathB/CSCI599/blob/main/assets/results/assignment3/3dgs.mp4">3dgs.mp4</a> -
+                Output of 3D Gaussian Splatting on our custom data.</li>
+            <li><a href="https://github.com/NikhilKamathB/CSCI599/blob/main/assets/results/assignment3/dozer.mp4">dozer.mp4</a>
+                - Output of NeRF on the dozer data.</li>
+            <li><a href="https://github.com/NikhilKamathB/CSCI599/blob/main/assets/results/assignment3/nerf.mp4">nerf.mp4</a> -
+                Output of NeRF on our custom data.</li>
+            <li><a
+                    href="https://github.com/NikhilKamathB/CSCI599/blob/main/assets/results/assignment3/pcd_nerf.ply">pcd_nerf.ply</a>
+                - Point clouds as a result of NeRF model output on custom data.</li>
+            <li><a
+                    href="https://github.com/NikhilKamathB/CSCI599/blob/main/assets/results/assignment3/pcd_splat.ply">pcd_splat.ply</a>
+                - Splats generated by the 3D Gaussian Splatting on custom data.</li>
+            <li><a
+                    href="https://github.com/NikhilKamathB/CSCI599/blob/main/assets/results/assignment3/pcd_output.ply">pcd_output.ply</a>
+                - COLMAP point clouds output for our custom data.</li>
+        </ul>
+
+        <hr>
+
+        <h3>Extra Credits</h3>
+
+        <ol>
+            <li>Present results with your own captured data:
+                <p>This has already been addressed, and just for the ease, here is the result of training NeRF on our custom dataset:</p>
+                    <div style="margin: auto;">
+                        <video controls autoplay loop muted style="width: 100%;">
+                            <source src="../assets/results/assignment3/nerf.mp4" type="video/mp4">
+                        </video>
+                    </div>
+            </li>
+
+            <li>Train your models with both Nerf and 3DGS:
+                <p>3D Gaussian Splatting is again a technique used for rendering volumetric data. The method involves distributing data
+                points within a 3D space and visualizing them by "splatting" each point with a Gaussian function. Each data point is
+                treated as the center of a Gaussian kernel. The extent of the spread of the Gaussian can be controlled by its standard
+                deviation parameter. When applied in 3D, this creates a volume around each point where the intensity or opacity of the
+                volume is highest at the center and decreases smoothly towards zero as you move away from the center. Each data point in
+                the 3D volume is projected onto a viewing plane based on the viewer’s perspective. Then a Gaussian kernel is applied at
+                the projection of each point, contributing to a scalar or color field on the viewing plane. Following this, these
+                Gaussian contributions from multiple points are combined or "composited" together on the viewing plane to form a
+                continuous volumetric representation. Coming back to our task, we have already trained the NeRF model on our custom
+                data. Following, we have the screenshot of the resultant splats.</p>
+
+                <table style="text-align: center; margin: auto">
+                    <tr>
+                        <td>SS of 3DGS Splats</td>
+                    </tr>
+                    <tr>
+                        <td><img src="https://github.com/NikhilKamathB/CSCI599/blob/main/assets/results/assignment3/pcd_splat.png?raw=true"
+                                style="max-width: 40vw; height: auto;">
+                        </td>
+                    </tr>
+                </table>
+
+                <p>Below is the result of training the 3D Gaussian Splatting model on our custom data.</p>
+                <div style="margin: auto;">
+                    <video controls autoplay loop muted style="width: 100%;">
+                        <source src="../assets/results/assignment3/3dgs.mp4" type="video/mp4">
+                    </video>
+                </div>
+
+                <p>Here are the splats for 3DGS</p>
+                <div id="container3"></div>
+
+            </li>
+        </ol>
+    </div>
+    <script type="module" src="assignment3.js"></script>
+</body>
+
+</html>
