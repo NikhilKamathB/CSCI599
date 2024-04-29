@@ -16,6 +16,7 @@ logs/**
 !assets/results/assignment2/verbose/**/**_reprojection_error.png
 !assets/results/assignment2/cloudpoints/**
 !assets/results/assignment2/backup/**
+!assets/results/assignment3/**
 verbose/**
 *.pkl
 
